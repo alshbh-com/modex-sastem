@@ -28,6 +28,7 @@ export const ALL_SECTIONS = [
   { key: 'company-accounts', label: 'حسابات الشركات', url: '/company-accounts' },
   { key: 'office-accounts', label: 'حسابات المكاتب', url: '/office-accounts' },
   { key: 'advances', label: 'السلفات والخصومات', url: '/advances' },
+  { key: 'office-settlement', label: 'تقفيلة المكاتب', url: '/office-settlement' },
   { key: 'daily-report', label: 'التقرير اليومي', url: '/daily-report' },
   { key: 'financial-reports', label: 'التقارير المالية', url: '/financial-reports' },
   { key: 'courier-stats', label: 'إحصائيات المناديب', url: '/courier-stats' },

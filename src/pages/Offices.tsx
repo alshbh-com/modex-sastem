@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
+import { logActivity } from '@/lib/activityLogger';
 
 export default function Offices() {
   const [offices, setOffices] = useState<any[]>([]);
@@ -31,9 +32,11 @@ export default function Offices() {
     if (!form.name.trim()) return;
     if (editId) {
       await supabase.from('offices').update(form).eq('id', editId);
+      logActivity('تعديل مكتب', { office_id: editId, name: form.name });
       toast.success('تم التعديل');
     } else {
       await supabase.from('offices').insert(form);
+      logActivity('إضافة مكتب', { name: form.name });
       toast.success('تم الإضافة');
     }
     setOpen(false); resetForm(); setEditId(null); load();
@@ -42,6 +45,7 @@ export default function Offices() {
   const remove = async (id: string) => {
     if (!confirm('هل أنت متأكد من الحذف؟')) return;
     await supabase.from('offices').delete().eq('id', id);
+    logActivity('حذف مكتب', { office_id: id });
     toast.success('تم الحذف'); load();
   };
 

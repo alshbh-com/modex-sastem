@@ -70,6 +70,7 @@ export default function PrintSticker() {
           <div class="barcode-area">${generateBarcodeStripes(barcode)}</div>
           <div class="barcode-num">${barcode}</div>
           <div class="row"><span>الكود: <b>${order.customer_code || '-'}</b></span><span>${new Date(order.created_at).toLocaleDateString('ar-EG')}</span></div>
+          <div class="info">العميل: <b>${order.customer_name}</b></div>
           <div class="info">المكتب: <b>${order.offices?.name || '-'}</b></div>
           <div class="info">هاتف: <b dir="ltr">${order.customer_phone}</b></div>
           <div class="info">العنوان: <b>${order.address || '-'}</b></div>

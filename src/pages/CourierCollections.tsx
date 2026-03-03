@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { logActivity } from '@/lib/activityLogger';
 
 export default function CourierCollections() {
   const { user, isOwner } = useAuth();
@@ -103,6 +104,7 @@ export default function CourierCollections() {
       created_by: user?.id,
     });
     if (error) { toast.error(error.message); return; }
+    logActivity('إضافة عمولة لمندوب', { courier_id: selectedCourier, type: bonusType, amount: parseFloat(bonusAmount) });
     toast.success(bonusType === 'office_commission' ? 'تم إضافة عمولة المكتب' : 'تم إضافة العمولة');
     setBonusDialogOpen(false);
     setBonusAmount(''); setBonusReason('');
@@ -112,6 +114,7 @@ export default function CourierCollections() {
   const deleteBonus = async (id: string) => {
     if (!confirm('حذف هذه العمولة؟')) return;
     await supabase.from('courier_bonuses').delete().eq('id', id);
+    logActivity('حذف عمولة مندوب', { bonus_id: id, courier_id: selectedCourier });
     toast.success('تم الحذف');
     loadCourierData();
   };
@@ -122,6 +125,7 @@ export default function CourierCollections() {
     if (orderIds.length > 0) {
       await supabase.from('orders').update({ is_closed: true }).in('id', orderIds);
     }
+    logActivity('تقفيل حساب مندوب', { courier_id: selectedCourier, order_count: orderIds.length });
     toast.success('تم تقفيل الحساب');
     setIsClosed(true);
     loadCourierData();

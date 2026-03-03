@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Eye, Lock, StickyNote, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { logActivity } from '@/lib/activityLogger';
 
 export default function Couriers() {
   const { user } = useAuth();
@@ -85,6 +86,7 @@ export default function Couriers() {
   const saveEditCourier = async () => {
     if (!editDialog) return;
     await supabase.from('profiles').update(editForm).eq('id', editDialog.id);
+    logActivity('تعديل بيانات مندوب', { courier_id: editDialog.id, name: editForm.full_name });
     toast.success('تم التعديل');
     setEditDialog(null);
     loadCouriers();

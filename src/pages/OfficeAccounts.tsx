@@ -185,6 +185,7 @@ export default function OfficeAccounts() {
       notes: advanceNotes || (advanceType === 'advance' ? 'دفعة مقدمة' : 'عمولة'),
     });
     if (error) { toast.error('حدث خطأ: ' + error.message); return; }
+    logActivity('إضافة دفعة/عمولة لمكتب', { office_id: advanceOffice, type: advanceType, amount: parseFloat(advanceAmount) });
     toast.success('تم الحفظ بنجاح');
     setAdvanceOpen(false); setAdvanceAmount(''); setAdvanceNotes(''); setAdvanceOffice('');
     loadAccounts();
@@ -197,6 +198,7 @@ export default function OfficeAccounts() {
       notes: editNotes,
     }).eq('id', editItem.id);
     if (error) { toast.error(error.message); return; }
+    logActivity('تعديل دفعة مكتب', { payment_id: editItem.id });
     toast.success('تم التحديث');
     setEditItem(null);
     loadAccounts();
@@ -205,6 +207,7 @@ export default function OfficeAccounts() {
   const deletePayment = async (id: string) => {
     if (!confirm('حذف هذا السجل؟')) return;
     await supabase.from('office_payments').delete().eq('id', id);
+    logActivity('حذف دفعة مكتب', { payment_id: id });
     toast.success('تم الحذف');
     loadAccounts();
   };

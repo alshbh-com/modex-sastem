@@ -35,6 +35,7 @@ import StatusManagement from "@/pages/StatusManagement";
 import OrderNotes from "@/pages/OrderNotes";
 import DataExport from "@/pages/DataExport";
 import OfficePortal from "@/pages/OfficePortal";
+import OfficeSettlement from "@/pages/OfficeSettlement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -91,6 +92,7 @@ const App = () => (
               <Route path="/status-management" element={<StatusManagement />} />
               <Route path="/order-notes" element={<OrderNotes />} />
               <Route path="/data-export" element={<DataExport />} />
+              <Route path="/office-settlement" element={<OfficeSettlement />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

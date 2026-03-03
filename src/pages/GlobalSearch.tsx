@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Search, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Label } from '@/components/ui/label';
+import { logActivity } from '@/lib/activityLogger';
 
 export default function GlobalSearch() {
   const [search, setSearch] = useState('');
@@ -54,6 +55,7 @@ export default function GlobalSearch() {
     if (!editOrder) return;
     const { error } = await supabase.from('orders').update({ status_id: editStatusId || null }).eq('id', editOrder.id);
     if (error) { toast.error(error.message); return; }
+    logActivity('تغيير حالة أوردر من البحث الشامل', { order_id: editOrder.id, status_id: editStatusId });
     toast.success('تم تحديث الحالة');
     setEditOrder(null);
     doSearch();

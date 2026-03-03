@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { logActivity } from '@/lib/activityLogger';
 
 interface Props {
   onOrderAdded: () => void;
@@ -110,6 +111,7 @@ export default function AddOrderDialog({ onOrderAdded, editOrder, onClose }: Pro
       if (editOrder) {
         const { error } = await supabase.from('orders').update(orderData).eq('id', editOrder.id);
         if (error) throw error;
+        logActivity('تعديل أوردر', { order_id: editOrder.id, customer: orderData.customer_name });
         toast.success('تم تحديث الأوردر');
       } else {
         const { data: seqData } = await supabase.rpc('nextval_barcode' as any);
@@ -126,6 +128,7 @@ export default function AddOrderDialog({ onOrderAdded, editOrder, onClose }: Pro
             await supabase.from('products').update({ quantity: Math.max(0, product.quantity - qty) }).eq('id', form.product_id);
           }
         }
+        logActivity('إضافة أوردر جديد', { customer: orderData.customer_name, barcode });
         toast.success('تم إضافة الأوردر بنجاح');
       }
 

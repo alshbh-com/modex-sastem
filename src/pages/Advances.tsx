@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Trash2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { logActivity } from '@/lib/activityLogger';
 
 export default function Advances() {
   const { user } = useAuth();
@@ -62,6 +63,7 @@ export default function Advances() {
       created_by: user?.id,
     });
     if (error) { toast.error(error.message); return; }
+    logActivity('إضافة سلفة/خصم', { user_id: selectedEmployee, type, amount: parseFloat(amount) });
     toast.success('تم الإضافة');
     setDialogOpen(false);
     setAmount(''); setReason('');
@@ -71,6 +73,7 @@ export default function Advances() {
   const deleteAdvance = async (id: string) => {
     if (!confirm('حذف؟')) return;
     await supabase.from('advances').delete().eq('id', id);
+    logActivity('حذف سلفة/خصم', { advance_id: id });
     loadAdvances();
   };
 
