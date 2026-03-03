@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,10 @@ import { Plus, Trash2 } from 'lucide-react';
 
 interface SettlementRow {
   id: string;
+  code: string;
+  name: string;
   count: string;
+  pieces: string;
   amount: string;
   shipping: string;
   arrived: string;
@@ -15,7 +18,10 @@ interface SettlementRow {
 
 const newRow = (): SettlementRow => ({
   id: crypto.randomUUID(),
+  code: '',
+  name: '',
   count: '',
+  pieces: '',
   amount: '',
   shipping: '',
   arrived: '',
@@ -36,8 +42,8 @@ export default function OfficeSettlement() {
     setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
   };
 
-  // Totals
   const totalCount = rows.filter(r => r.count.trim() !== '').length;
+  const totalPieces = rows.reduce((sum, r) => sum + (parseFloat(r.pieces) || 0), 0);
   const totalAmount = rows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
   const totalShipping = rows.reduce((sum, r) => sum + (parseFloat(r.shipping) || 0), 0);
   const totalArrived = rows.reduce((sum, r) => sum + (parseFloat(r.arrived) || 0), 0);
@@ -62,7 +68,10 @@ export default function OfficeSettlement() {
               <TableHeader>
                 <TableRow className="border-border">
                   <TableHead className="text-right w-10">#</TableHead>
+                  <TableHead className="text-right">الكود</TableHead>
+                  <TableHead className="text-right">الاسم</TableHead>
                   <TableHead className="text-right">العدد</TableHead>
+                  <TableHead className="text-right">عدد القطع</TableHead>
                   <TableHead className="text-right">المبلغ</TableHead>
                   <TableHead className="text-right">الشحن</TableHead>
                   <TableHead className="text-right">الواصل</TableHead>
@@ -74,48 +83,28 @@ export default function OfficeSettlement() {
                   <TableRow key={row.id} className="border-border">
                     <TableCell className="text-sm text-muted-foreground">{idx + 1}</TableCell>
                     <TableCell>
-                      <Input
-                        value={row.count}
-                        onChange={e => updateRow(row.id, 'count', e.target.value)}
-                        className="bg-secondary border-border h-8 w-24"
-                        placeholder="-"
-                      />
+                      <Input value={row.code} onChange={e => updateRow(row.id, 'code', e.target.value)} className="bg-secondary border-border h-8 w-28" placeholder="-" />
                     </TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        value={row.amount}
-                        onChange={e => updateRow(row.id, 'amount', e.target.value)}
-                        className="bg-secondary border-border h-8 w-28"
-                        placeholder="0"
-                      />
+                      <Input value={row.name} onChange={e => updateRow(row.id, 'name', e.target.value)} className="bg-secondary border-border h-8 w-36" placeholder="-" />
                     </TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        value={row.shipping}
-                        onChange={e => updateRow(row.id, 'shipping', e.target.value)}
-                        className="bg-secondary border-border h-8 w-28"
-                        placeholder="0"
-                      />
+                      <Input value={row.count} onChange={e => updateRow(row.id, 'count', e.target.value)} className="bg-secondary border-border h-8 w-24" placeholder="-" />
                     </TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        value={row.arrived}
-                        onChange={e => updateRow(row.id, 'arrived', e.target.value)}
-                        className="bg-secondary border-border h-8 w-28"
-                        placeholder="0"
-                      />
+                      <Input type="number" value={row.pieces} onChange={e => updateRow(row.id, 'pieces', e.target.value)} className="bg-secondary border-border h-8 w-24" placeholder="0" />
                     </TableCell>
                     <TableCell>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="text-destructive h-8 w-8"
-                        onClick={() => removeRow(row.id)}
-                        disabled={rows.length <= 1}
-                      >
+                      <Input type="number" value={row.amount} onChange={e => updateRow(row.id, 'amount', e.target.value)} className="bg-secondary border-border h-8 w-28" placeholder="0" />
+                    </TableCell>
+                    <TableCell>
+                      <Input type="number" value={row.shipping} onChange={e => updateRow(row.id, 'shipping', e.target.value)} className="bg-secondary border-border h-8 w-28" placeholder="0" />
+                    </TableCell>
+                    <TableCell>
+                      <Input type="number" value={row.arrived} onChange={e => updateRow(row.id, 'arrived', e.target.value)} className="bg-secondary border-border h-8 w-28" placeholder="0" />
+                    </TableCell>
+                    <TableCell>
+                      <Button size="icon" variant="ghost" className="text-destructive h-8 w-8" onClick={() => removeRow(row.id)} disabled={rows.length <= 1}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -124,8 +113,11 @@ export default function OfficeSettlement() {
               </TableBody>
               <TableFooter>
                 <TableRow className="border-border bg-muted/50">
-                  <TableCell className="font-bold text-sm">الإجمالي</TableCell>
+                  <TableCell />
+                  <TableCell />
+                  <TableCell />
                   <TableCell className="font-bold text-sm">{totalCount}</TableCell>
+                  <TableCell className="font-bold text-sm">{totalPieces}</TableCell>
                   <TableCell className="font-bold text-sm">{totalAmount}</TableCell>
                   <TableCell className="font-bold text-sm">{totalShipping}</TableCell>
                   <TableCell className="font-bold text-sm">{totalArrived}</TableCell>
@@ -137,43 +129,16 @@ export default function OfficeSettlement() {
         </CardContent>
       </Card>
 
-      {/* Pickup calculation */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-card border-border">
-          <CardContent className="p-4 space-y-2">
-            <p className="text-sm text-muted-foreground">سعر البيك اب للأوردر</p>
-            <Input
-              type="number"
-              value={pickupRate}
-              onChange={e => setPickupRate(e.target.value)}
-              className="bg-secondary border-border"
-              placeholder="0"
-            />
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border">
-          <CardContent className="p-4 text-center">
-            <p className="text-sm text-muted-foreground mb-1">البيك اب</p>
-            <p className="text-xl font-bold text-amber-500">{pickupTotal} ج.م</p>
-            <p className="text-xs text-muted-foreground mt-1">{totalCount} أوردر × {pickupRateNum} ج.م</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border">
-          <CardContent className="p-4 text-center">
-            <p className="text-sm text-muted-foreground mb-1">المستحق</p>
-            <p className={`text-2xl font-bold ${due >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>{due} ج.م</p>
-            <p className="text-xs text-muted-foreground mt-1">المبلغ - (البيك اب + الشحن + الواصل)</p>
-          </CardContent>
-        </Card>
-      </div>
-
       <Card className="bg-card border-border">
-        <CardContent className="p-3">
-          <p className="text-sm text-muted-foreground text-center">
-            المعادلة: {totalAmount} - ({pickupTotal} + {totalShipping} + {totalArrived}) = <strong className={due >= 0 ? 'text-emerald-500' : 'text-destructive'}>{due} ج.م</strong>
-          </p>
+        <CardContent className="p-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">رقم البيك اب</p>
+              <Input type="number" value={pickupRate} onChange={e => setPickupRate(e.target.value)} className="bg-secondary border-border" placeholder="0" />
+            </div>
+            <div className="text-sm font-medium">البيك اب = {totalCount} × {pickupRateNum} = <span className="font-bold">{pickupTotal}</span></div>
+            <div className="text-sm font-medium">المستحق = {totalAmount} - ({pickupTotal} + {totalShipping} + {totalArrived}) = <span className="font-bold">{due}</span></div>
+          </div>
         </CardContent>
       </Card>
     </div>

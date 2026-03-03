@@ -193,7 +193,11 @@ export default function Orders() {
                   return (
                     <TableRow key={order.id} className={`border-border ${hasCourier ? 'bg-muted/30' : ''}`}>
                       <TableCell><Checkbox checked={selected.has(order.id)} onCheckedChange={() => toggleSelect(order.id)} /></TableCell>
-                      <TableCell className="font-mono text-xs">{order.tracking_id}</TableCell>
+                      <TableCell className="text-xs">
+                        <div className="font-mono">{order.tracking_id}</div>
+                        <div className="text-muted-foreground">{new Date(order.created_at).toLocaleDateString('en-US')}</div>
+                        <div className="font-mono text-[10px]">{order.barcode || '-'}</div>
+                      </TableCell>
                       <TableCell className="font-mono text-xs">{order.customer_code || '-'}</TableCell>
                       <TableCell className="text-sm">{order.customer_name}</TableCell>
                       <TableCell className="text-sm truncate max-w-[120px]">{order.address || '-'}</TableCell>

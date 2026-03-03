@@ -18,7 +18,7 @@ export default function OrderNotes() {
     const [notesRes, profilesRes, ordersRes] = await Promise.all([
       supabase.from('order_notes').select('*').order('created_at', { ascending: false }).limit(500),
       supabase.from('profiles').select('id, full_name'),
-      supabase.from('orders').select('id, barcode, customer_name, tracking_id'),
+      supabase.from('orders').select('id, barcode, customer_name, tracking_id, customer_code, offices(name)'),
     ]);
     setNotes(notesRes.data || []);
     setProfiles(profilesRes.data || []);
@@ -58,13 +58,15 @@ export default function OrderNotes() {
                   <TableHead className="text-right">التاريخ</TableHead>
                   <TableHead className="text-right">الأوردر</TableHead>
                   <TableHead className="text-right">العميل</TableHead>
+                  <TableHead className="text-right">كود المكتب</TableHead>
+                  <TableHead className="text-right">اسم المكتب</TableHead>
                   <TableHead className="text-right">الملاحظة</TableHead>
                   <TableHead className="text-right">بواسطة</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">لا توجد ملاحظات</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">لا توجد ملاحظات</TableCell></TableRow>
                 ) : filtered.map(n => {
                   const order = getOrder(n.order_id);
                   return (
@@ -72,6 +74,8 @@ export default function OrderNotes() {
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(n.created_at).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</TableCell>
                       <TableCell className="font-mono text-xs">{order?.barcode || order?.tracking_id || '-'}</TableCell>
                       <TableCell className="text-sm">{order?.customer_name || '-'}</TableCell>
+                      <TableCell className="font-mono text-xs">{order?.customer_code || '-'}</TableCell>
+                      <TableCell className="text-sm">{order?.offices?.name || '-'}</TableCell>
                       <TableCell className="text-sm max-w-[200px] truncate">{n.note}</TableCell>
                       <TableCell className="text-sm">{getUser(n.user_id)}</TableCell>
                     </TableRow>

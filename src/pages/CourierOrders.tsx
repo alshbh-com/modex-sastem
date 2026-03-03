@@ -11,8 +11,6 @@ import { LogOut, Eye, Phone, MessageSquare, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { logActivity } from '@/lib/activityLogger';
 
-const SHIPPING_OPTIONS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100];
-
 export default function CourierOrders() {
   const { user, logout } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
@@ -22,6 +20,7 @@ export default function CourierOrders() {
   const [notes, setNotes] = useState<any[]>([]);
   const [savingNote, setSavingNote] = useState(false);
   const [shippingDialog, setShippingDialog] = useState<any | null>(null);
+  const [shippingAmount, setShippingAmount] = useState('');
   const [partialDialog, setPartialDialog] = useState<any | null>(null);
   const [partialAmount, setPartialAmount] = useState('');
 
@@ -48,13 +47,10 @@ export default function CourierOrders() {
   const receivedHalfShipStatus = statuses.find(s => s.name === 'استلم ودفع نص الشحن');
 
   const updateStatus = async (orderId: string, statusId: string) => {
-    if (statusId === rejectWithShipStatus?.id) {
-      setShippingDialog({ orderId, statusId, type: 'reject' });
-      return;
-    }
-
-    if (statusId === receivedHalfShipStatus?.id) {
-      setShippingDialog({ orderId, statusId, type: 'half_ship' });
+    if (statusId === rejectWithShipStatus?.id || statusId === receivedHalfShipStatus?.id) {
+      const type = statusId === receivedHalfShipStatus?.id ? 'half_ship' : 'reject';
+      setShippingDialog({ orderId, statusId, type });
+      setShippingAmount('');
       return;
     }
 
@@ -76,25 +72,46 @@ export default function CourierOrders() {
     load();
   };
 
-  const confirmShippingPaid = async (amount: number) => {
+  const confirmShippingPaid = async () => {
     if (!shippingDialog) return;
-    await supabase.from('orders').update({ 
+    const amount = parseFloat(shippingAmount) || 0;
+    if (amount <= 0) {
+      toast.error('اكتب مبلغ الشحن المحصل');
+      return;
+    }
+
+    await supabase.from('orders').update({
       status_id: shippingDialog.statusId,
       shipping_paid: amount,
     }).eq('id', shippingDialog.orderId);
-    logActivity('مندوب - رفض ودفع شحن', { order_id: shippingDialog.orderId, amount });
-    toast.success(`تم - مصاريف الشحن المدفوعة: ${amount} ج.م`);
+
+    logActivity('مندوب - تحصيل شحن', {
+      order_id: shippingDialog.orderId,
+      status_id: shippingDialog.statusId,
+      amount,
+    });
+
+    toast.success(`تم تسجيل مبلغ الشحن: ${amount} ج.م`);
     setShippingDialog(null);
+    setShippingAmount('');
     load();
   };
 
   const confirmPartialDelivery = async () => {
     if (!partialDialog) return;
     const received = parseFloat(partialAmount) || 0;
-    await supabase.from('orders').update({ 
+
+    await supabase.from('orders').update({
       status_id: partialDialog.statusId,
       partial_amount: received,
     }).eq('id', partialDialog.orderId);
+
+    logActivity('مندوب - تسليم جزئي', {
+      order_id: partialDialog.orderId,
+      received,
+      returned: Number(partialDialog.order?.price || 0) - received,
+    });
+
     const returnAmount = Number(partialDialog.order?.price || 0) - received;
     toast.success(`تسليم جزئي: ${received} ج.م - مرتجع: ${returnAmount} ج.م`);
     setPartialDialog(null);
@@ -194,31 +211,32 @@ export default function CourierOrders() {
         </Card>
       </div>
 
-      {/* Shipping amount dialog with preset options */}
       <Dialog open={!!shippingDialog} onOpenChange={v => { if (!v) setShippingDialog(null); }}>
         <DialogContent className="bg-card border-border">
           <DialogHeader>
             <DialogTitle>
-              {shippingDialog?.type === 'half_ship' ? 'استلم ودفع نص الشحن - اختر المبلغ' : 'رفض ودفع شحن - اختر مبلغ الشحن'}
+              {shippingDialog?.type === 'half_ship' ? 'استلم ودفع نص الشحن' : 'رفض ودفع شحن'}
             </DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-3 gap-2">
-            {SHIPPING_OPTIONS.map(amount => (
-              <Button key={amount} variant="outline" className="text-lg py-6" onClick={() => confirmShippingPaid(amount)}>
-                {amount} ج.م
-              </Button>
-            ))}
+          <div className="space-y-3">
+            <Input
+              type="number"
+              value={shippingAmount}
+              onChange={e => setShippingAmount(e.target.value)}
+              placeholder="اكتب مبلغ الشحن المحصل"
+              className="bg-secondary border-border"
+            />
+            <Button onClick={confirmShippingPaid} className="w-full">تأكيد</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Partial delivery dialog */}
       <Dialog open={!!partialDialog} onOpenChange={v => { if (!v) setPartialDialog(null); }}>
         <DialogContent className="bg-card border-border">
           <DialogHeader><DialogTitle>تسليم جزئي - أدخل المبلغ المحصل</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">سعر الأوردر: {partialDialog?.order?.price || 0} ج.م</p>
-            <Input type="number" value={partialAmount} onChange={e => setPartialAmount(e.target.value)} placeholder="المبلغ المحصل (بدون الشحن)" className="bg-secondary border-border" />
+            <Input type="number" value={partialAmount} onChange={e => setPartialAmount(e.target.value)} placeholder="المبلغ المحصل" className="bg-secondary border-border" />
             {partialAmount && (
               <p className="text-sm">المرتجع الجزئي: <strong className="text-destructive">{Number(partialDialog?.order?.price || 0) - (parseFloat(partialAmount) || 0)} ج.م</strong></p>
             )}
@@ -227,7 +245,6 @@ export default function CourierOrders() {
         </DialogContent>
       </Dialog>
 
-      {/* Order Details Dialog */}
       <Dialog open={!!selectedOrder} onOpenChange={(v) => { if (!v) setSelectedOrder(null); }}>
         <DialogContent className="max-w-lg bg-card border-border max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>تفاصيل الأوردر - {selectedOrder?.tracking_id}</DialogTitle></DialogHeader>
@@ -241,8 +258,6 @@ export default function CourierOrders() {
                 <div><span className="text-muted-foreground">الكمية:</span> <strong>{selectedOrder.quantity}</strong></div>
                 <div><span className="text-muted-foreground">المكتب:</span> <strong>{selectedOrder.offices?.name || '-'}</strong></div>
                 <div className="col-span-2"><span className="text-muted-foreground">العنوان:</span> <strong>{selectedOrder.address || '-'}</strong></div>
-                <div><span className="text-muted-foreground">السعر:</span> <strong>{selectedOrder.price} ج.م</strong></div>
-                <div><span className="text-muted-foreground">الشحن:</span> <strong>{selectedOrder.delivery_price} ج.م</strong></div>
                 <div className="col-span-2"><span className="text-muted-foreground">الإجمالي:</span> <strong className="text-lg">{Number(selectedOrder.price) + Number(selectedOrder.delivery_price)} ج.م</strong></div>
                 <div><span className="text-muted-foreground">اللون:</span> <strong>{selectedOrder.color || '-'}</strong></div>
                 <div><span className="text-muted-foreground">المقاس:</span> <strong>{selectedOrder.size || '-'}</strong></div>

@@ -88,6 +88,21 @@ export default function AddOrderDialog({ onOrderAdded, editOrder, onClose }: Pro
       return;
     }
 
+    if (!form.office_id) {
+      toast.error('اختيار المكتب إجباري');
+      return;
+    }
+
+    if (form.price === '' || Number(form.price) < 0) {
+      toast.error('السعر إجباري');
+      return;
+    }
+
+    if (form.delivery_price === '' || Number(form.delivery_price) < 0) {
+      toast.error('الشحن إجباري');
+      return;
+    }
+
     setLoading(true);
     try {
       const qty = parseInt(form.quantity) || 1;
@@ -104,7 +119,7 @@ export default function AddOrderDialog({ onOrderAdded, editOrder, onClose }: Pro
         address: form.address,
         notes: form.notes || '',
       };
-      if (form.office_id) orderData.office_id = form.office_id;
+      orderData.office_id = form.office_id;
       if (form.product_id) orderData.product_id = form.product_id;
       if (form.status_id) orderData.status_id = form.status_id;
 
@@ -157,11 +172,11 @@ export default function AddOrderDialog({ onOrderAdded, editOrder, onClose }: Pro
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>اسم العميل *</Label>
-              <Input value={form.customer_name} onChange={e => set('customer_name', e.target.value)} className="bg-secondary border-border" placeholder="اسم العميل" />
+              <Input required value={form.customer_name} onChange={e => set('customer_name', e.target.value)} className="bg-secondary border-border" placeholder="اسم العميل" />
             </div>
             <div className="space-y-2">
               <Label>رقم الهاتف *</Label>
-              <Input value={form.customer_phone} onChange={e => set('customer_phone', e.target.value)} className="bg-secondary border-border" placeholder="01xxxxxxxxx" dir="ltr" />
+              <Input required value={form.customer_phone} onChange={e => set('customer_phone', e.target.value)} className="bg-secondary border-border" placeholder="01xxxxxxxxx" dir="ltr" />
             </div>
           </div>
 
@@ -171,9 +186,9 @@ export default function AddOrderDialog({ onOrderAdded, editOrder, onClose }: Pro
               <Input value={form.customer_code} onChange={e => set('customer_code', e.target.value)} className="bg-secondary border-border" placeholder="كود المكتب" />
             </div>
             <div className="space-y-2">
-              <Label>المكتب</Label>
+              <Label>المكتب *</Label>
               <Select value={form.office_id} onValueChange={v => set('office_id', v)}>
-                <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="اختر مكتب" /></SelectTrigger>
+                <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="اختر مكتب (إجباري)" /></SelectTrigger>
                 <SelectContent>{offices.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
@@ -208,14 +223,14 @@ export default function AddOrderDialog({ onOrderAdded, editOrder, onClose }: Pro
                 className="bg-secondary border-border" placeholder="1" />
             </div>
             <div className="space-y-2">
-              <Label>السعر (ج.م)</Label>
-              <Input type="number" min={0} value={form.price} onChange={e => set('price', e.target.value)}
+              <Label>السعر (ج.م) *</Label>
+              <Input required type="number" min={0} value={form.price} onChange={e => set('price', e.target.value)}
                 onFocus={e => { if (e.target.value === '0') set('price', ''); }}
                 className="bg-secondary border-border" placeholder="0" />
             </div>
             <div className="space-y-2">
-              <Label>سعر التوصيل</Label>
-              <Input type="number" min={0} value={form.delivery_price} onChange={e => set('delivery_price', e.target.value)}
+              <Label>سعر التوصيل *</Label>
+              <Input required type="number" min={0} value={form.delivery_price} onChange={e => set('delivery_price', e.target.value)}
                 onFocus={e => { if (e.target.value === '0') set('delivery_price', ''); }}
                 className="bg-secondary border-border" placeholder="0" />
             </div>

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { UserPlus, UserMinus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { logActivity } from '@/lib/activityLogger';
 
 export default function UnassignedOrders() {
   const { isOwner } = useAuth();
@@ -64,6 +65,7 @@ export default function UnassignedOrders() {
     
     const { error } = await supabase.from('orders').update(updateData).in('id', Array.from(selected));
     if (error) { toast.error(error.message); return; }
+    logActivity('تعيين أوردرات لمندوب من جميع الأوردرات', { count: selected.size, courier_id: assignCourier });
     toast.success(`تم تعيين ${selected.size} أوردر للمندوب`);
     setSelected(new Set()); setAssignCourier('');
     loadOrders();
@@ -75,6 +77,7 @@ export default function UnassignedOrders() {
     
     const { error } = await supabase.from('orders').update(updateData).in('id', Array.from(selected));
     if (error) { toast.error(error.message); return; }
+    logActivity('إلغاء تعيين أوردرات من جميع الأوردرات', { count: selected.size });
     toast.success(`تم إلغاء تعيين ${selected.size} أوردر`);
     setSelected(new Set());
     loadOrders();
@@ -84,6 +87,7 @@ export default function UnassignedOrders() {
     if (selected.size === 0) return;
     if (!confirm(`حذف ${selected.size} أوردر نهائياً؟`)) return;
     await supabase.from('orders').delete().in('id', Array.from(selected));
+    logActivity('حذف أوردرات من جميع الأوردرات', { count: selected.size });
     toast.success('تم الحذف');
     setSelected(new Set());
     loadOrders();

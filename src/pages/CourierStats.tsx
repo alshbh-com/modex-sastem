@@ -14,15 +14,20 @@ export default function CourierStats() {
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
-    const [courierRes, ordersRes, statusRes] = await Promise.all([
-      supabase.from('profiles').select('*, user_roles(role)'),
+    const [rolesRes, ordersRes, statusRes] = await Promise.all([
+      supabase.from('user_roles').select('user_id').eq('role', 'courier'),
       supabase.from('orders').select('*').not('courier_id', 'is', null),
       supabase.from('order_statuses').select('*'),
     ]);
-    const courierProfiles = (courierRes.data || []).filter((p: any) =>
-      p.user_roles?.some((r: any) => r.role === 'courier')
-    );
-    setCouriers(courierProfiles);
+
+    const courierIds = (rolesRes.data || []).map(r => r.user_id);
+    if (courierIds.length > 0) {
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name, phone').in('id', courierIds);
+      setCouriers(profiles || []);
+    } else {
+      setCouriers([]);
+    }
+
     setOrders(ordersRes.data || []);
     setStatuses(statusRes.data || []);
   };

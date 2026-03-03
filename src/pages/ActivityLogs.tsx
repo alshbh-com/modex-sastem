@@ -13,6 +13,13 @@ export default function ActivityLogs() {
         supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(200),
         supabase.from('profiles').select('id, full_name'),
       ]);
+
+      if (logsRes.error) {
+        console.error('Failed loading activity logs:', logsRes.error);
+        setLogs([]);
+        return;
+      }
+
       setLogs(logsRes.data || []);
       const map: Record<string, string> = {};
       (profilesRes.data || []).forEach(p => { map[p.id] = p.full_name; });

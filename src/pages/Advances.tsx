@@ -28,9 +28,18 @@ export default function Advances() {
   useEffect(() => {
     const load = async () => {
       const { data: roles } = await supabase.from('user_roles').select('user_id, role');
-      if (roles && roles.length > 0) {
-        const { data: profiles } = await supabase.from('profiles').select('id, full_name, salary').in('id', roles.map(r => r.user_id));
+      const allowedIds = (roles || [])
+        .filter(r => r.role !== 'office')
+        .map(r => r.user_id);
+
+      if (allowedIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, salary')
+          .in('id', allowedIds);
         setEmployees(profiles || []);
+      } else {
+        setEmployees([]);
       }
     };
     load();
@@ -112,9 +121,9 @@ export default function Advances() {
 
       <div className="flex flex-wrap gap-3 items-end">
         <div className="space-y-1">
-          <Label className="text-xs">الموظف</Label>
+          <Label className="text-xs">الموظف / المندوب</Label>
           <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-            <SelectTrigger className="w-48 bg-secondary border-border"><SelectValue placeholder="اختر موظف" /></SelectTrigger>
+            <SelectTrigger className="w-48 bg-secondary border-border"><SelectValue placeholder="اختر موظف أو مندوب" /></SelectTrigger>
             <SelectContent>
               {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
             </SelectContent>
