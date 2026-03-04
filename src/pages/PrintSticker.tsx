@@ -67,8 +67,9 @@ export default function PrintSticker() {
       return `
         <div class="sticker">
           <div class="header">FIRST</div>
+          <div class="date">${new Date(order.created_at).toLocaleDateString('ar-EG')}</div>
           <div class="barcode-num">${barcode}</div>
-          <div class="row"><span>الكود: <b>${order.customer_code || '-'}</b></span><span>${new Date(order.created_at).toLocaleDateString('ar-EG')}</span></div>
+          <div class="row"><span>الكود: <b>${order.customer_code || '-'}</b></span></div>
           <div class="info">العميل: <b>${order.customer_name}</b></div>
           <div class="info">المكتب: <b>${order.offices?.name || '-'}</b></div>
           <div class="info">هاتف: <b dir="ltr">${order.customer_phone}</b></div>
@@ -83,11 +84,12 @@ export default function PrintSticker() {
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }
         .sticker { width: 50mm; height: 100mm; padding: 4mm 1.5mm 4mm 10mm; box-sizing: border-box; page-break-after: always; display: flex; flex-direction: column; direction: rtl; text-align: right; }
         .sticker:last-child { page-break-after: auto; }
-        .header { text-align: left; font-size: 11px; font-weight: bold; margin-bottom: 3px; direction: ltr; }
-        .barcode-num { font-family: monospace; font-size: 12px; font-weight: bold; margin-bottom: 4px; text-align: right; }
-        .info { margin: 2px 0; font-size: 7px; line-height: 1.4; text-align: right; word-wrap: break-word; overflow-wrap: break-word; }
-        .row { display: flex; justify-content: space-between; margin: 2px 0; font-size: 7px; }
-        .total { font-size: 11px; font-weight: bold; text-align: center; border: 1.5px solid #000; padding: 3px; margin-top: auto; }
+        .header { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 1px; direction: ltr; }
+        .date { text-align: center; font-size: 8px; margin-bottom: 3px; color: #333; }
+        .barcode-num { font-family: monospace; font-size: 17px; font-weight: bold; margin-bottom: 4px; text-align: center; }
+        .info { margin: 2px 0; font-size: 10px; line-height: 1.4; text-align: right; word-wrap: break-word; overflow-wrap: break-word; }
+        .row { display: flex; justify-content: space-between; margin: 2px 0; font-size: 10px; }
+        .total { font-size: 15px; font-weight: bold; text-align: center; border: 1.5px solid #000; padding: 3px; margin-top: auto; }
       </style></head><body>${stickers}</body></html>`);
     printWindow.document.close();
     printWindow.focus();
