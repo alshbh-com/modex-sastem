@@ -81,7 +81,7 @@ export default function PrintSticker() {
       <style>
         @page { size: 50mm 100mm; margin: 0; }
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }
-        .sticker { width: 50mm; height: 100mm; padding: 4mm 3mm; box-sizing: border-box; page-break-after: always; display: flex; flex-direction: column; direction: rtl; text-align: right; }
+        .sticker { width: 50mm; height: 100mm; padding: 4mm 1.5mm 4mm 10mm; box-sizing: border-box; page-break-after: always; display: flex; flex-direction: column; direction: rtl; text-align: right; }
         .sticker:last-child { page-break-after: auto; }
         .header { text-align: left; font-size: 18px; font-weight: bold; margin-bottom: 6px; direction: ltr; }
         .barcode-num { font-family: monospace; font-size: 20px; font-weight: bold; margin-bottom: 8px; text-align: right; }
