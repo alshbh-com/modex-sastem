@@ -229,6 +229,7 @@ export default function UsersPage() {
                   <Select value={newRole} onValueChange={setNewRole}>
                     <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="اختر الصلاحية" /></SelectTrigger>
                     <SelectContent>
+                      {isOwner && <SelectItem value="owner">مالك (Owner)</SelectItem>}
                       <SelectItem value="admin">مسؤول (Admin)</SelectItem>
                       <SelectItem value="courier">مندوب (Courier)</SelectItem>
                       <SelectItem value="office">مكتب (Office)</SelectItem>

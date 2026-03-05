@@ -10,8 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Pencil, Trash2, Lock } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { logActivity } from '@/lib/activityLogger';
 
@@ -24,7 +23,6 @@ export default function OfficeAccounts() {
   const [period, setPeriod] = useState('all');
   const [payments, setPayments] = useState<any[]>([]);
   const [officeOrders, setOfficeOrders] = useState<any[]>([]);
-  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
 
   const [advanceOpen, setAdvanceOpen] = useState(false);
   const [advanceOffice, setAdvanceOffice] = useState('');
@@ -45,48 +43,23 @@ export default function OfficeAccounts() {
 
   useEffect(() => {
     if (selectedOffice !== 'all') loadOfficeOrders();
-    else {
-      setOfficeOrders([]);
-      setSelectedOrders([]);
-    }
+    else setOfficeOrders([]);
   }, [selectedOffice]);
 
   const loadOfficeOrders = async () => {
     const { data } = await supabase
       .from('orders')
-      .select('id, tracking_id, barcode, status_id, partial_amount, price, is_settled')
+      .select('id, barcode, status_id, partial_amount, price, is_settled, customer_code, customer_name')
       .eq('office_id', selectedOffice)
       .eq('is_closed', false)
       .order('created_at', { ascending: false });
     setOfficeOrders(data || []);
-    setSelectedOrders([]);
   };
 
   const toggleSettled = async (orderId: string, settled: boolean) => {
     await supabase.from('orders').update({ is_settled: settled } as any).eq('id', orderId);
     setOfficeOrders(prev => prev.map(o => o.id === orderId ? { ...o, is_settled: settled } : o));
     toast.success(settled ? 'تم تحديد كخالص' : 'تم إلغاء التحديد');
-  };
-
-  const closeSelectedOrders = async () => {
-    if (selectedOrders.length === 0) { toast.error('اختر أوردرات للتقفيل'); return; }
-    if (!confirm(`هل تريد تقفيل ${selectedOrders.length} أوردر؟ ستختفي من الحساب.`)) return;
-    const { error } = await supabase.from('orders').update({ is_closed: true }).in('id', selectedOrders);
-    if (error) { toast.error(error.message); return; }
-    logActivity('تقفيل حساب مكتب', { count: selectedOrders.length, office_id: selectedOffice });
-    toast.success(`تم تقفيل ${selectedOrders.length} أوردر`);
-    setSelectedOrders([]);
-    loadOfficeOrders();
-    loadAccounts();
-  };
-
-  const toggleOrderSelection = (orderId: string) => {
-    setSelectedOrders(prev => prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]);
-  };
-
-  const toggleAllOrders = () => {
-    if (selectedOrders.length === officeOrders.length) setSelectedOrders([]);
-    else setSelectedOrders(officeOrders.map(o => o.id));
   };
 
   const getDateFilter = () => {
@@ -110,8 +83,8 @@ export default function OfficeAccounts() {
     const dateFilter = getDateFilter();
 
     const deliveredStatus = statuses.find(s => s.name === 'تم التسليم');
-    const partialStatus = statuses.find(s => s.name === 'تسليم جزئي');
     const postponedStatus = statuses.find(s => s.name === 'مؤجل');
+    const partialStatus = statuses.find(s => s.name === 'تسليم جزئي');
     const returnStatusIds = statuses
       .filter(s => ['رفض ولم يدفع شحن', 'رفض ودفع شحن', 'تهرب', 'ملغي', 'لم يرد', 'لايرد'].includes(s.name))
       .map(s => s.id);
@@ -133,17 +106,14 @@ export default function OfficeAccounts() {
       const advancePaid = officePayments.filter(p => p.type === 'advance').reduce((sum, p) => sum + Number(p.amount), 0);
       const commission = officePayments.filter(p => p.type === 'commission').reduce((sum, p) => sum + Number(p.amount), 0);
       const shippingDiscount = officePayments.filter(p => p.type === 'shipping_discount').reduce((sum, p) => sum + Number(p.amount), 0);
+      const partialManual = officePayments.filter(p => p.type === 'partial_delivery').reduce((sum, p) => sum + Number(p.amount), 0);
 
       const deliveredTotal = orders.filter(o => o.status_id === deliveredStatus?.id).reduce((sum, o) => sum + Number(o.price), 0);
-      const baseReturnedTotal = orders.filter(o => returnStatusIds.includes(o.status_id)).reduce((sum, o) => sum + Number(o.price), 0);
+      const returnedTotal = orders.filter(o => returnStatusIds.includes(o.status_id)).reduce((sum, o) => sum + Number(o.price), 0);
       const postponedTotal = orders.filter(o => o.status_id === postponedStatus?.id).reduce((sum, o) => sum + Number(o.price), 0);
+      const partialCourierCollected = orders.filter(o => o.status_id === partialStatus?.id).reduce((sum, o) => sum + Number(o.partial_amount || 0), 0);
 
-      const partialOrders = orders.filter(o => o.status_id === partialStatus?.id);
-      const partialDeliveredTotal = partialOrders.reduce((sum, o) => sum + Number(o.partial_amount || 0), 0);
-      const partialReturnTotal = partialOrders.reduce((sum, o) => sum + Math.max(0, Number(o.price) - Number(o.partial_amount || 0)), 0);
-
-      const returnedTotal = baseReturnedTotal + partialReturnTotal;
-      const settlement = (deliveredTotal + partialDeliveredTotal) - (advancePaid + returnedTotal + shippingDiscount + commission);
+      const settlement = (deliveredTotal + partialManual) - (advancePaid + returnedTotal + shippingDiscount + commission);
       const settlementWithPostponed = settlement + postponedTotal;
 
       return {
@@ -153,8 +123,8 @@ export default function OfficeAccounts() {
         deliveredTotal,
         returnedTotal,
         postponedTotal,
-        partialDeliveredTotal,
-        partialReturnTotal,
+        partialManual,
+        partialCourierCollected,
         shippingDiscount,
         settlement,
         settlementWithPostponed,
@@ -172,6 +142,7 @@ export default function OfficeAccounts() {
     const defaultNote =
       advanceType === 'advance' ? 'دفعة' :
       advanceType === 'commission' ? 'عمولة' :
+      advanceType === 'partial_delivery' ? 'تسليم جزئي (يدوي)' :
       'خصم شحن';
 
     const { error } = await supabase.from('office_payments').insert({
@@ -229,6 +200,7 @@ export default function OfficeAccounts() {
     if (type === 'advance') return 'دفعة';
     if (type === 'commission') return 'عمولة';
     if (type === 'shipping_discount') return 'خصم شحن';
+    if (type === 'partial_delivery') return 'تسليم جزئي (يدوي)';
     return type;
   };
 
@@ -237,7 +209,7 @@ export default function OfficeAccounts() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl sm:text-2xl font-bold">حسابات المكاتب</h1>
         <Dialog open={advanceOpen} onOpenChange={setAdvanceOpen}>
-          <DialogTrigger asChild><Button size="sm"><Plus className="h-4 w-4 ml-1" />إضافة دفعة / عمولة / خصم شحن</Button></DialogTrigger>
+          <DialogTrigger asChild><Button size="sm"><Plus className="h-4 w-4 ml-1" />إضافة دفعة / عمولة / خصم شحن / تسليم جزئي</Button></DialogTrigger>
           <DialogContent className="bg-card border-border">
             <DialogHeader><DialogTitle>إضافة عملية مالية</DialogTitle></DialogHeader>
             <div className="space-y-4">
@@ -256,6 +228,7 @@ export default function OfficeAccounts() {
                     <SelectItem value="advance">دفعة</SelectItem>
                     <SelectItem value="commission">عمولة</SelectItem>
                     <SelectItem value="shipping_discount">خصم الشحن</SelectItem>
+                    <SelectItem value="partial_delivery">تسليم جزئي (يدوي)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -313,7 +286,8 @@ export default function OfficeAccounts() {
                   <TableHead className="text-right">تسليم</TableHead>
                   <TableHead className="text-right">مرتجع</TableHead>
                   <TableHead className="text-right">مؤجل</TableHead>
-                  <TableHead className="text-right hidden sm:table-cell">تسليم جزئي</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">تسليم جزئي (يدوي)</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">تحصيل جزئي مندوب</TableHead>
                   <TableHead className="text-right hidden sm:table-cell">خصم شحن</TableHead>
                   <TableHead className="text-right">المدفوع</TableHead>
                   <TableHead className="text-right">العمولة</TableHead>
@@ -323,7 +297,7 @@ export default function OfficeAccounts() {
               </TableHeader>
               <TableBody>
                 {accounts.length === 0 ? (
-                  <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">لا توجد بيانات</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">لا توجد بيانات</TableCell></TableRow>
                 ) : accounts.map(a => (
                   <TableRow key={a.id} className="border-border">
                     <TableCell className="font-medium text-sm">{a.name}</TableCell>
@@ -331,7 +305,8 @@ export default function OfficeAccounts() {
                     <TableCell className="font-bold text-sm">{a.deliveredTotal} ج.م</TableCell>
                     <TableCell className="font-bold text-sm">{a.returnedTotal} ج.م</TableCell>
                     <TableCell className="font-bold text-sm">{a.postponedTotal} ج.م</TableCell>
-                    <TableCell className="font-bold text-sm hidden sm:table-cell">{a.partialDeliveredTotal} ج.م</TableCell>
+                    <TableCell className="font-bold text-sm hidden sm:table-cell">{a.partialManual} ج.م</TableCell>
+                    <TableCell className="font-bold text-sm hidden sm:table-cell">{a.partialCourierCollected} ج.م</TableCell>
                     <TableCell className="text-sm hidden sm:table-cell">{a.shippingDiscount} ج.م</TableCell>
                     <TableCell className="font-bold text-sm">{a.advancePaid} ج.م</TableCell>
                     <TableCell className="text-sm font-bold">{a.commission} ج.م</TableCell>
@@ -350,21 +325,16 @@ export default function OfficeAccounts() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">أوردرات المكتب ({officeOrders.length})</h3>
-              {selectedOrders.length > 0 && (
-                <Button size="sm" variant="destructive" onClick={closeSelectedOrders}>
-                  <Lock className="h-4 w-4 ml-1" />تقفيل ({selectedOrders.length})
-                </Button>
-              )}
             </div>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-border">
-                    <TableHead className="text-right w-10">
-                      <Checkbox checked={selectedOrders.length === officeOrders.length && officeOrders.length > 0} onCheckedChange={toggleAllOrders} />
-                    </TableHead>
                     <TableHead className="text-right">الباركود</TableHead>
+                    <TableHead className="text-right">الكود</TableHead>
+                    <TableHead className="text-right">الاسم</TableHead>
                     <TableHead className="text-right">السعر</TableHead>
+                    <TableHead className="text-right">التحصيل الجزئي</TableHead>
                     <TableHead className="text-right">الحالة</TableHead>
                     <TableHead className="text-right">خالص</TableHead>
                   </TableRow>
@@ -374,11 +344,11 @@ export default function OfficeAccounts() {
                     const status = statuses.find(s => s.id === o.status_id);
                     return (
                       <TableRow key={o.id} className="border-border">
-                        <TableCell>
-                          <Checkbox checked={selectedOrders.includes(o.id)} onCheckedChange={() => toggleOrderSelection(o.id)} />
-                        </TableCell>
                         <TableCell className="font-mono text-xs">{o.barcode || '-'}</TableCell>
+                        <TableCell className="font-mono text-xs">{o.customer_code || '-'}</TableCell>
+                        <TableCell className="text-sm">{o.customer_name || '-'}</TableCell>
                         <TableCell className="text-sm">{o.price} ج.م</TableCell>
+                        <TableCell className="text-sm font-bold text-primary">{Number(o.partial_amount || 0) > 0 ? `${o.partial_amount} ج.م` : '-'}</TableCell>
                         <TableCell>
                           {status ? <Badge style={{ backgroundColor: status.color }} className="text-xs">{status.name}</Badge> : '-'}
                         </TableCell>
@@ -455,7 +425,7 @@ export default function OfficeAccounts() {
 
       <Card className="bg-card border-border p-4">
         <h3 className="font-semibold mb-2">معادلة صافي الحساب:</h3>
-        <p className="text-sm text-muted-foreground">المستحق = (التسليمات + تسليم جزئي) - (المدفوع + المرتجع + خصم الشحن + العمولة)</p>
+        <p className="text-sm text-muted-foreground">المستحق = (التسليمات + تسليم جزئي يدوي) - (المدفوع + المرتجع + خصم الشحن + العمولة)</p>
         <p className="text-sm text-muted-foreground">المستحق بالمؤجل = المستحق + المؤجل</p>
       </Card>
     </div>

@@ -39,6 +39,18 @@ export default function CourierOrders() {
     setOrders(data || []);
   };
 
+  const syncCollectionForOrder = async (orderId: string, amount: number) => {
+    await supabase.from('courier_collections').delete().eq('order_id', orderId);
+    if (amount > 0) {
+      await supabase.from('courier_collections').insert({
+        courier_id: user?.id || '',
+        order_id: orderId,
+        amount,
+        collected_by: user?.id,
+      });
+    }
+  };
+
   const totalPrice = orders.reduce((sum, o) => sum + Number(o.price) + Number(o.delivery_price), 0);
 
   const rejectWithShipStatus = statuses.find(s => s.name === 'رفض ودفع شحن');
@@ -61,7 +73,8 @@ export default function CourierOrders() {
       return;
     }
 
-    await supabase.from('orders').update({ status_id: statusId }).eq('id', orderId);
+    await supabase.from('orders').update({ status_id: statusId, shipping_paid: 0, partial_amount: 0 }).eq('id', orderId);
+    await syncCollectionForOrder(orderId, 0);
     logActivity('مندوب غيّر حالة أوردر', { order_id: orderId, status_id: statusId });
 
     if (statusId === postponedStatus?.id) {
@@ -83,15 +96,10 @@ export default function CourierOrders() {
     await supabase.from('orders').update({
       status_id: shippingDialog.statusId,
       shipping_paid: amount,
+      partial_amount: 0,
     }).eq('id', shippingDialog.orderId);
 
-    // Save to courier_collections
-    await supabase.from('courier_collections').insert({
-      courier_id: user?.id || '',
-      order_id: shippingDialog.orderId,
-      amount,
-      collected_by: user?.id,
-    });
+    await syncCollectionForOrder(shippingDialog.orderId, amount);
 
     logActivity('مندوب - تحصيل شحن', {
       order_id: shippingDialog.orderId,
@@ -107,21 +115,34 @@ export default function CourierOrders() {
 
   const confirmPartialDelivery = async () => {
     if (!partialDialog) return;
+    const orderPrice = Number(partialDialog.order?.price || 0);
     const received = parseFloat(partialAmount) || 0;
+
+    if (received <= 0) {
+      toast.error('اكتب المبلغ المحصل');
+      return;
+    }
+
+    if (received > orderPrice) {
+      toast.error('المبلغ المحصل لا يمكن أن يكون أكبر من سعر الأوردر');
+      return;
+    }
 
     await supabase.from('orders').update({
       status_id: partialDialog.statusId,
       partial_amount: received,
+      shipping_paid: 0,
     }).eq('id', partialDialog.orderId);
+
+    await syncCollectionForOrder(partialDialog.orderId, received);
 
     logActivity('مندوب - تسليم جزئي', {
       order_id: partialDialog.orderId,
       received,
-      returned: Number(partialDialog.order?.price || 0) - received,
+      returned: orderPrice - received,
     });
 
-    const returnAmount = Number(partialDialog.order?.price || 0) - received;
-    toast.success(`تسليم جزئي: ${received} ج.م - مرتجع: ${returnAmount} ج.م`);
+    toast.success(`تم تسجيل التحصيل الجزئي: ${received} ج.م`);
     setPartialDialog(null);
     load();
   };

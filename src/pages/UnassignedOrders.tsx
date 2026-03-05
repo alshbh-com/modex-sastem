@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { UserPlus, UserMinus, Trash2 } from 'lucide-react';
+import { UserPlus, UserMinus, Trash2, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { logActivity } from '@/lib/activityLogger';
@@ -83,6 +83,17 @@ export default function UnassignedOrders() {
     loadOrders();
   };
 
+  const closeSelected = async () => {
+    if (selected.size === 0) { toast.error('اختر أوردرات أولاً'); return; }
+    if (!confirm(`هل تريد تقفيل ${selected.size} أوردر؟`)) return;
+    const { error } = await supabase.from('orders').update({ is_closed: true }).in('id', Array.from(selected));
+    if (error) { toast.error(error.message); return; }
+    logActivity('تقفيل أوردرات من جميع الأوردرات', { count: selected.size });
+    toast.success(`تم تقفيل ${selected.size} أوردر`);
+    setSelected(new Set());
+    loadOrders();
+  };
+
   const deleteSelected = async () => {
     if (selected.size === 0) return;
     if (!confirm(`حذف ${selected.size} أوردر نهائياً؟`)) return;
@@ -122,6 +133,7 @@ export default function UnassignedOrders() {
           </Select>
           <Button size="sm" onClick={assignToCourier} disabled={!assignCourier}><UserPlus className="h-4 w-4 ml-1" />تعيين</Button>
           <Button size="sm" variant="outline" onClick={unassignCourier}><UserMinus className="h-4 w-4 ml-1" />إلغاء التعيين</Button>
+          <Button size="sm" variant="secondary" onClick={closeSelected}><Lock className="h-4 w-4 ml-1" />تقفيل</Button>
           {isOwner && <Button size="sm" variant="destructive" onClick={deleteSelected}><Trash2 className="h-4 w-4 ml-1" />حذف</Button>}
         </div>
       )}
@@ -133,7 +145,7 @@ export default function UnassignedOrders() {
               <TableHeader>
                 <TableRow className="border-border">
                   <TableHead className="w-10"><Checkbox checked={filtered.length > 0 && selected.size === filtered.length} onCheckedChange={toggleAll} /></TableHead>
-                  <TableHead className="text-right">Tracking</TableHead>
+                  <TableHead className="text-right">الباركود</TableHead>
                   <TableHead className="text-right">الكود</TableHead>
                   <TableHead className="text-right">العميل</TableHead>
                   <TableHead className="text-right">العنوان</TableHead>
@@ -150,7 +162,7 @@ export default function UnassignedOrders() {
                 ) : filtered.map(order => (
                   <TableRow key={order.id} className={`border-border ${order.courier_id ? 'bg-muted/30' : ''}`}>
                     <TableCell><Checkbox checked={selected.has(order.id)} onCheckedChange={() => toggleSelect(order.id)} /></TableCell>
-                    <TableCell className="font-mono text-xs">{order.tracking_id}</TableCell>
+                    <TableCell className="text-xs"><div className="text-muted-foreground">{new Date(order.created_at).toLocaleDateString('ar-EG')}</div><div className="font-mono font-bold">{order.barcode || '-'}</div></TableCell>
                     <TableCell className="font-mono text-xs">{order.customer_code || '-'}</TableCell>
                     <TableCell className="text-sm">{order.customer_name}</TableCell>
                     <TableCell className="text-sm truncate max-w-[120px]">{order.address || '-'}</TableCell>
