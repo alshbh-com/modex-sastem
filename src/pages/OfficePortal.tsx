@@ -83,7 +83,7 @@ export default function OfficePortal() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border">
-                    <TableHead className="text-right">رقم التتبع</TableHead>
+                    <TableHead className="text-right">الباركود</TableHead>
                     <TableHead className="text-right">كود العميل</TableHead>
                     <TableHead className="text-right">العميل</TableHead>
                     <TableHead className="text-right">الهاتف</TableHead>
@@ -102,7 +102,7 @@ export default function OfficePortal() {
                     <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">لا توجد أوردرات</TableCell></TableRow>
                   ) : orders.map(o => (
                     <TableRow key={o.id} className="border-border">
-                      <TableCell className="font-mono text-xs">{o.tracking_id}</TableCell>
+                      <TableCell className="text-xs"><div className="text-muted-foreground">{new Date(o.created_at).toLocaleDateString('ar-EG')}</div><div className="font-mono font-bold">{o.barcode || '-'}</div></TableCell>
                       <TableCell className="text-sm">{o.customer_code || '-'}</TableCell>
                       <TableCell className="font-medium text-sm">{o.customer_name}</TableCell>
                       <TableCell dir="ltr" className="text-sm">{o.customer_phone}</TableCell>

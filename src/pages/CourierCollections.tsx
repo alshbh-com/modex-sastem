@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, Trash2, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { logActivity } from '@/lib/activityLogger';
@@ -21,12 +22,12 @@ export default function CourierCollections() {
   const [commissionPerOrder, setCommissionPerOrder] = useState('');
   const [commissionStatuses, setCommissionStatuses] = useState<string[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [bonuses, setBonuses] = useState<any[]>([]);
   const [bonusDialogOpen, setBonusDialogOpen] = useState(false);
   const [bonusType, setBonusType] = useState<'special' | 'office_commission'>('special');
   const [bonusAmount, setBonusAmount] = useState('');
   const [bonusReason, setBonusReason] = useState('');
-  const [isClosed, setIsClosed] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -41,7 +42,14 @@ export default function CourierCollections() {
     load();
   }, []);
 
-  useEffect(() => { if (selectedCourier) loadCourierData(); }, [selectedCourier]);
+  useEffect(() => {
+    if (selectedCourier) loadCourierData();
+    else {
+      setOrders([]);
+      setBonuses([]);
+      setSelectedOrders(new Set());
+    }
+  }, [selectedCourier]);
 
   const loadCourierData = async () => {
     const { data: orderData } = await supabase
@@ -51,6 +59,7 @@ export default function CourierCollections() {
       .eq('is_closed', false)
       .order('created_at', { ascending: false });
     setOrders(orderData || []);
+    setSelectedOrders(new Set());
 
     const { data: bonusData } = await supabase
       .from('courier_bonuses')
@@ -58,41 +67,72 @@ export default function CourierCollections() {
       .eq('courier_id', selectedCourier)
       .order('created_at', { ascending: false });
     setBonuses(bonusData || []);
-    setIsClosed(false);
   };
 
   const deliveredStatus = statuses.find(s => s.name === 'تم التسليم');
   const rejectWithShipStatus = statuses.find(s => s.name === 'رفض ودفع شحن');
+  const halfShipStatus = statuses.find(s => s.name === 'استلم ودفع نص الشحن');
+  const partialDeliveryStatus = statuses.find(s => s.name === 'تسليم جزئي');
 
-  // Auto-calculated: total collection = sum of (price + delivery_price) for delivered orders
-  const deliveredOrders = orders.filter(o => o.status_id === deliveredStatus?.id);
-  const totalCollection = deliveredOrders.reduce((sum, o) => sum + Number(o.price) + Number(o.delivery_price), 0);
+  const getCollectedAmount = (order: any) => {
+    if (order.status_id === deliveredStatus?.id) return Number(order.price) + Number(order.delivery_price);
+    if (order.status_id === partialDeliveryStatus?.id) return Number(order.partial_amount || 0);
+    if (order.status_id === rejectWithShipStatus?.id || order.status_id === halfShipStatus?.id) return Number(order.shipping_paid || 0);
+    return 0;
+  };
 
-  // Reject with shipping - courier keeps shipping cost
-  const rejectShipOrders = orders.filter(o => o.status_id === rejectWithShipStatus?.id);
-  const rejectShipTotal = rejectShipOrders.reduce((sum, o) => sum + Number(o.delivery_price), 0);
+  const totalCollection = orders.reduce((sum, o) => sum + getCollectedAmount(o), 0);
+  const rejectShipTotal = orders
+    .filter(o => o.status_id === rejectWithShipStatus?.id || o.status_id === halfShipStatus?.id)
+    .reduce((sum, o) => sum + Number(o.shipping_paid || 0), 0);
 
-  // Commission
   const rate = parseFloat(commissionPerOrder) || 0;
   const eligibleOrders = orders.filter(o => commissionStatuses.includes(o.status_id));
   const commissionTotal = eligibleOrders.length * rate;
 
-  // Bonuses total
-  const totalBonuses = bonuses.reduce((sum, b) => sum + Number(b.amount), 0);
-
-  // Office commission bonuses (عمولة مكتب)
   const officeCommissionBonuses = bonuses.filter(b => b.reason?.startsWith('__office_commission__'));
   const totalOfficeCommission = officeCommissionBonuses.reduce((sum, b) => sum + Number(b.amount), 0);
-
-  // Regular bonuses (عمولة خاصة) - exclude office commission
   const regularBonuses = bonuses.filter(b => !b.reason?.startsWith('__office_commission__'));
   const totalRegularBonuses = regularBonuses.reduce((sum, b) => sum + Number(b.amount), 0);
 
-  // Net: totalCollection + rejectShipTotal + totalOfficeCommission - commissionTotal - totalRegularBonuses
-  const netDue = totalCollection + rejectShipTotal + totalOfficeCommission - commissionTotal - totalRegularBonuses;
+  const netDue = totalCollection + totalOfficeCommission - commissionTotal - totalRegularBonuses;
 
   const toggleStatus = (statusId: string) => {
     setCommissionStatuses(prev => prev.includes(statusId) ? prev.filter(s => s !== statusId) : [...prev, statusId]);
+  };
+
+  const toggleSelectOrder = (orderId: string) => {
+    setSelectedOrders(prev => {
+      const next = new Set(prev);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  };
+
+  const toggleSelectAllOrders = () => {
+    if (orders.length > 0 && selectedOrders.size === orders.length) {
+      setSelectedOrders(new Set());
+      return;
+    }
+    setSelectedOrders(new Set(orders.map(o => o.id)));
+  };
+
+  const closeSelectedOrders = async () => {
+    if (selectedOrders.size === 0) { toast.error('اختر أوردرات للتقفيل'); return; }
+    if (!confirm(`هل تريد تقفيل ${selectedOrders.size} أوردر؟`)) return;
+
+    const ids = Array.from(selectedOrders);
+    const { error } = await supabase.from('orders').update({ is_closed: true }).in('id', ids);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    logActivity('تقفيل أوردرات من تحصيلات المندوب', { courier_id: selectedCourier, count: ids.length });
+    toast.success(`تم تقفيل ${ids.length} أوردر`);
+    setSelectedOrders(new Set());
+    loadCourierData();
   };
 
   const addBonus = async () => {
@@ -107,7 +147,8 @@ export default function CourierCollections() {
     logActivity('إضافة عمولة لمندوب', { courier_id: selectedCourier, type: bonusType, amount: parseFloat(bonusAmount) });
     toast.success(bonusType === 'office_commission' ? 'تم إضافة عمولة المكتب' : 'تم إضافة العمولة');
     setBonusDialogOpen(false);
-    setBonusAmount(''); setBonusReason('');
+    setBonusAmount('');
+    setBonusReason('');
     loadCourierData();
   };
 
@@ -116,18 +157,6 @@ export default function CourierCollections() {
     await supabase.from('courier_bonuses').delete().eq('id', id);
     logActivity('حذف عمولة مندوب', { bonus_id: id, courier_id: selectedCourier });
     toast.success('تم الحذف');
-    loadCourierData();
-  };
-
-  const closeAccount = async () => {
-    if (!confirm('هل تريد تقفيل حساب المندوب؟ سيتم تقفيل جميع الأوردرات.')) return;
-    const orderIds = orders.map(o => o.id);
-    if (orderIds.length > 0) {
-      await supabase.from('orders').update({ is_closed: true }).in('id', orderIds);
-    }
-    logActivity('تقفيل حساب مندوب', { courier_id: selectedCourier, order_count: orderIds.length });
-    toast.success('تم تقفيل الحساب');
-    setIsClosed(true);
     loadCourierData();
   };
 
@@ -147,15 +176,13 @@ export default function CourierCollections() {
 
       {selectedCourier && (
         <>
-          {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="bg-card border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground">إجمالي التحصيل</p><p className="text-lg font-bold text-emerald-500">{totalCollection} ج.م</p></CardContent></Card>
-            <Card className="bg-card border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground">عمولة المكتب</p><p className="text-lg font-bold text-amber-500">{rejectShipTotal + totalOfficeCommission} ج.م</p></CardContent></Card>
+            <Card className="bg-card border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground">شحن محصل + عمولة مكتب</p><p className="text-lg font-bold text-amber-500">{rejectShipTotal + totalOfficeCommission} ج.م</p></CardContent></Card>
             <Card className="bg-card border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground">العمولة</p><p className="text-lg font-bold text-destructive">{commissionTotal} ج.م</p></CardContent></Card>
             <Card className="bg-card border-border"><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground">صافي المستحق</p><p className="text-lg font-bold text-primary">{netDue} ج.م</p></CardContent></Card>
           </div>
 
-          {/* Commission calculator */}
           <Card className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">حاسبة العمولة</CardTitle>
@@ -174,7 +201,9 @@ export default function CourierCollections() {
                     </div>
                   </DialogContent>
                 </Dialog>
-                <Button size="sm" variant="destructive" onClick={closeAccount}>تقفيل الحساب</Button>
+                {selectedOrders.size > 0 && (
+                  <Button size="sm" variant="destructive" onClick={closeSelectedOrders}><Lock className="h-4 w-4 ml-1" />تقفيل ({selectedOrders.size})</Button>
+                )}
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -201,7 +230,6 @@ export default function CourierCollections() {
             </CardContent>
           </Card>
 
-          {/* Bonuses */}
           {bonuses.length > 0 && (
             <Card className="bg-card border-border">
               <CardHeader><CardTitle className="text-base">العمولات</CardTitle></CardHeader>
@@ -236,7 +264,6 @@ export default function CourierCollections() {
             </Card>
           )}
 
-          {/* Courier orders */}
           <Card className="bg-card border-border">
             <CardHeader><CardTitle className="text-base">أوردرات المندوب ({orders.length})</CardTitle></CardHeader>
             <CardContent className="p-0">
@@ -244,6 +271,7 @@ export default function CourierCollections() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-border">
+                      <TableHead className="text-right w-10"><Checkbox checked={orders.length > 0 && selectedOrders.size === orders.length} onCheckedChange={toggleSelectAllOrders} /></TableHead>
                       <TableHead className="text-right">الباركود</TableHead>
                       <TableHead className="text-right">الكود</TableHead>
                       <TableHead className="text-right">العميل</TableHead>
@@ -252,27 +280,33 @@ export default function CourierCollections() {
                       <TableHead className="text-right">الإجمالي</TableHead>
                       <TableHead className="text-right">الحالة</TableHead>
                       <TableHead className="text-right">شحن محصل</TableHead>
+                      <TableHead className="text-right">التحصيل</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {orders.length === 0 ? (
-                      <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-4">لا توجد أوردرات</TableCell></TableRow>
-                    ) : orders.map(o => (
-                      <TableRow key={o.id} className="border-border">
-                        <TableCell className="font-mono text-xs">{o.barcode || '-'}</TableCell>
-                        <TableCell className="font-mono text-xs">{o.customer_code || '-'}</TableCell>
-                        <TableCell>{o.customer_name}</TableCell>
-                        <TableCell>{o.price} ج.م</TableCell>
-                        <TableCell>{o.delivery_price} ج.م</TableCell>
-                        <TableCell className="font-bold">{Number(o.price) + Number(o.delivery_price)} ج.م</TableCell>
-                        <TableCell>
-                          <Badge style={{ backgroundColor: o.order_statuses?.color }} className="text-xs">
-                            {o.order_statuses?.name || '-'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-bold text-emerald-500">{Number(o.shipping_paid) > 0 ? `${o.shipping_paid} ج.م` : '-'}</TableCell>
-                      </TableRow>
-                    ))}
+                      <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-4">لا توجد أوردرات</TableCell></TableRow>
+                    ) : orders.map(o => {
+                      const collected = getCollectedAmount(o);
+                      return (
+                        <TableRow key={o.id} className="border-border">
+                          <TableCell><Checkbox checked={selectedOrders.has(o.id)} onCheckedChange={() => toggleSelectOrder(o.id)} /></TableCell>
+                          <TableCell className="font-mono text-xs">{o.barcode || '-'}</TableCell>
+                          <TableCell className="font-mono text-xs">{o.customer_code || '-'}</TableCell>
+                          <TableCell>{o.customer_name}</TableCell>
+                          <TableCell>{o.price} ج.م</TableCell>
+                          <TableCell>{o.delivery_price} ج.م</TableCell>
+                          <TableCell className="font-bold">{Number(o.price) + Number(o.delivery_price)} ج.م</TableCell>
+                          <TableCell>
+                            <Badge style={{ backgroundColor: o.order_statuses?.color }} className="text-xs">
+                              {o.order_statuses?.name || '-'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-bold text-emerald-500">{Number(o.shipping_paid) > 0 ? `${o.shipping_paid} ج.م` : '-'}</TableCell>
+                          <TableCell className="font-bold text-primary">{collected > 0 ? `${collected} ج.م` : '-'}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

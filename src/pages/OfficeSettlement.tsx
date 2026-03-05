@@ -11,7 +11,7 @@ interface SettlementRow {
   id: string;
   code: string;
   name: string;
-  count: string;
+  status_id: string;
   pieces: string;
   amount: string;
   shipping: string;
@@ -22,7 +22,7 @@ const newRow = (): SettlementRow => ({
   id: crypto.randomUUID(),
   code: '',
   name: '',
-  count: '',
+  status_id: '',
   pieces: '',
   amount: '',
   shipping: '',
@@ -33,11 +33,12 @@ export default function OfficeSettlement() {
   const [rows, setRows] = useState<SettlementRow[]>([newRow()]);
   const [pickupRate, setPickupRate] = useState('');
   const [offices, setOffices] = useState<any[]>([]);
+  const [statuses, setStatuses] = useState<any[]>([]);
   const [selectedOffice, setSelectedOffice] = useState<string>('all');
-  const [officeOrders, setOfficeOrders] = useState<any[]>([]);
 
   useEffect(() => {
     supabase.from('offices').select('id, name').order('name').then(({ data }) => setOffices(data || []));
+    supabase.from('order_statuses').select('id, name').order('sort_order').then(({ data }) => setStatuses(data || []));
   }, []);
 
   useEffect(() => {
@@ -47,16 +48,14 @@ export default function OfficeSettlement() {
         .eq('is_closed', false)
         .order('created_at', { ascending: false })
         .then(({ data }) => {
-          setOfficeOrders(data || []);
-          // Auto-fill rows from orders
           if (data && data.length > 0) {
             setRows(data.map(o => ({
               id: o.id,
               code: o.customer_code || '',
               name: o.customer_name || '',
-              count: '1',
+              status_id: o.status_id || '',
               pieces: String(o.quantity || 1),
-              amount: String(Number(o.price) || 0),
+              amount: String((Number(o.price) || 0) + (Number(o.delivery_price) || 0)),
               shipping: String(Number(o.delivery_price) || 0),
               arrived: '0',
             })));
@@ -65,7 +64,6 @@ export default function OfficeSettlement() {
           }
         });
     } else {
-      setOfficeOrders([]);
       setRows([newRow()]);
     }
   }, [selectedOffice]);
@@ -81,15 +79,19 @@ export default function OfficeSettlement() {
     setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
   };
 
-  const totalCount = rows.filter(r => r.count.trim() !== '').length;
+  const usedRows = rows.filter(r =>
+    r.code.trim() !== '' || r.name.trim() !== '' || r.status_id || r.amount.trim() !== '' || r.shipping.trim() !== '' || r.arrived.trim() !== ''
+  );
+
+  const pickupUnits = usedRows.length;
   const totalPieces = rows.reduce((sum, r) => sum + (parseFloat(r.pieces) || 0), 0);
   const totalAmount = rows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
   const totalShipping = rows.reduce((sum, r) => sum + (parseFloat(r.shipping) || 0), 0);
   const totalArrived = rows.reduce((sum, r) => sum + (parseFloat(r.arrived) || 0), 0);
 
   const pickupRateNum = parseFloat(pickupRate) || 0;
-  const pickupTotal = totalCount * pickupRateNum;
-  const due = totalAmount - (pickupTotal + totalShipping + totalArrived);
+  const pickupTotal = pickupUnits * pickupRateNum;
+  const due = totalAmount - (pickupTotal + totalArrived);
 
   return (
     <div className="space-y-4">
@@ -122,9 +124,9 @@ export default function OfficeSettlement() {
                   <TableHead className="text-right w-10">#</TableHead>
                   <TableHead className="text-right">الكود</TableHead>
                   <TableHead className="text-right">الاسم</TableHead>
-                  <TableHead className="text-right">العدد</TableHead>
+                  <TableHead className="text-right">الحالة</TableHead>
                   <TableHead className="text-right">عدد القطع</TableHead>
-                  <TableHead className="text-right">المبلغ</TableHead>
+                  <TableHead className="text-right">المبلغ (إجمالي + شحن)</TableHead>
                   <TableHead className="text-right">الشحن</TableHead>
                   <TableHead className="text-right">الواصل</TableHead>
                   <TableHead className="text-right w-10">حذف</TableHead>
@@ -141,13 +143,18 @@ export default function OfficeSettlement() {
                       <Input value={row.name} onChange={e => updateRow(row.id, 'name', e.target.value)} className="bg-secondary border-border h-8 w-36" placeholder="-" />
                     </TableCell>
                     <TableCell>
-                      <Input value={row.count} onChange={e => updateRow(row.id, 'count', e.target.value)} className="bg-secondary border-border h-8 w-24" placeholder="-" />
+                      <Select value={row.status_id} onValueChange={(v) => updateRow(row.id, 'status_id', v)}>
+                        <SelectTrigger className="bg-secondary border-border h-8 w-36"><SelectValue placeholder="الحالة" /></SelectTrigger>
+                        <SelectContent>
+                          {statuses.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>
                       <Input type="number" value={row.pieces} onChange={e => updateRow(row.id, 'pieces', e.target.value)} className="bg-secondary border-border h-8 w-24" placeholder="0" />
                     </TableCell>
                     <TableCell>
-                      <Input type="number" value={row.amount} onChange={e => updateRow(row.id, 'amount', e.target.value)} className="bg-secondary border-border h-8 w-28" placeholder="0" />
+                      <Input type="number" value={row.amount} onChange={e => updateRow(row.id, 'amount', e.target.value)} className="bg-secondary border-border h-8 w-32" placeholder="0" />
                     </TableCell>
                     <TableCell>
                       <Input type="number" value={row.shipping} onChange={e => updateRow(row.id, 'shipping', e.target.value)} className="bg-secondary border-border h-8 w-28" placeholder="0" />
@@ -168,7 +175,7 @@ export default function OfficeSettlement() {
                   <TableCell />
                   <TableCell />
                   <TableCell />
-                  <TableCell className="font-bold text-sm">{totalCount}</TableCell>
+                  <TableCell className="font-bold text-sm">{pickupUnits}</TableCell>
                   <TableCell className="font-bold text-sm">{totalPieces}</TableCell>
                   <TableCell className="font-bold text-sm">{totalAmount}</TableCell>
                   <TableCell className="font-bold text-sm">{totalShipping}</TableCell>
@@ -188,8 +195,8 @@ export default function OfficeSettlement() {
               <p className="text-sm text-muted-foreground">رقم البيك اب</p>
               <Input type="number" value={pickupRate} onChange={e => setPickupRate(e.target.value)} className="bg-secondary border-border" placeholder="0" />
             </div>
-            <div className="text-sm font-medium">البيك اب = {totalCount} × {pickupRateNum} = <span className="font-bold">{pickupTotal}</span></div>
-            <div className="text-sm font-medium">المستحق = {totalAmount} - ({pickupTotal} + {totalShipping} + {totalArrived}) = <span className="font-bold">{due}</span></div>
+            <div className="text-sm font-medium">البيك اب = {pickupUnits} × {pickupRateNum} = <span className="font-bold">{pickupTotal}</span></div>
+            <div className="text-sm font-medium">المستحق = {totalAmount} - ({pickupTotal} + {totalArrived}) = <span className="font-bold">{due}</span></div>
           </div>
         </CardContent>
       </Card>
