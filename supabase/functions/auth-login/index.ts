@@ -164,9 +164,13 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
+    if (LEGACY_BLOCKED_PASSWORDS.has(password)) {
+      return new Response(JSON.stringify({ error: 'تم إيقاف هذا الكود القديم نهائيًا، استخدم الكود الجديد' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
 
     const email = codeToEmail(password)
-
     let { data, error } = await supabaseAdmin.auth.signInWithPassword({ email, password })
 
     if (error) {
