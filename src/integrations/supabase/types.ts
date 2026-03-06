@@ -68,6 +68,50 @@ export type Database = {
         }
         Relationships: []
       }
+      cash_flow_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          entry_date: string
+          id: string
+          notes: string | null
+          office_id: string | null
+          reason: string | null
+          type: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          office_id?: string | null
+          reason?: string | null
+          type?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          office_id?: string | null
+          reason?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_flow_entries_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           agreement_price: number
@@ -258,6 +302,7 @@ export type Database = {
           diary_date: string
           diary_number: number
           id: string
+          is_archived: boolean | null
           is_closed: boolean
           lock_status_updates: boolean
           office_id: string
@@ -269,6 +314,7 @@ export type Database = {
           diary_date?: string
           diary_number?: number
           id?: string
+          is_archived?: boolean | null
           is_closed?: boolean
           lock_status_updates?: boolean
           office_id: string
@@ -280,6 +326,7 @@ export type Database = {
           diary_date?: string
           diary_number?: number
           id?: string
+          is_archived?: boolean | null
           is_closed?: boolean
           lock_status_updates?: boolean
           office_id?: string
@@ -297,33 +344,59 @@ export type Database = {
       }
       diary_orders: {
         Row: {
+          copied_from_diary_id: string | null
+          copied_from_diary_order_id: string | null
           created_at: string
           diary_id: string
           id: string
+          locked_status: boolean | null
           n_column: string | null
+          notes: string | null
           order_id: string
           partial_amount: number | null
           status_inside_diary: string
         }
         Insert: {
+          copied_from_diary_id?: string | null
+          copied_from_diary_order_id?: string | null
           created_at?: string
           diary_id: string
           id?: string
+          locked_status?: boolean | null
           n_column?: string | null
+          notes?: string | null
           order_id: string
           partial_amount?: number | null
           status_inside_diary?: string
         }
         Update: {
+          copied_from_diary_id?: string | null
+          copied_from_diary_order_id?: string | null
           created_at?: string
           diary_id?: string
           id?: string
+          locked_status?: boolean | null
           n_column?: string | null
+          notes?: string | null
           order_id?: string
           partial_amount?: number | null
           status_inside_diary?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "diary_orders_copied_from_diary_id_fkey"
+            columns: ["copied_from_diary_id"]
+            isOneToOne: false
+            referencedRelation: "diaries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diary_orders_copied_from_diary_order_id_fkey"
+            columns: ["copied_from_diary_order_id"]
+            isOneToOne: false
+            referencedRelation: "diary_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "diary_orders_diary_id_fkey"
             columns: ["diary_id"]
@@ -350,6 +423,7 @@ export type Database = {
           expense_name: string
           id: string
           notes: string | null
+          office_id: string | null
         }
         Insert: {
           amount?: number
@@ -360,6 +434,7 @@ export type Database = {
           expense_name: string
           id?: string
           notes?: string | null
+          office_id?: string | null
         }
         Update: {
           amount?: number
@@ -370,8 +445,17 @@ export type Database = {
           expense_name?: string
           id?: string
           notes?: string | null
+          office_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "expenses_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       office_payments: {
         Row: {
