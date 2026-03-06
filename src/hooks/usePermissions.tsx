@@ -44,6 +44,7 @@ export const ALL_SECTIONS = [
 
 export function urlToSectionKey(url: string): string {
   if (url === '/') return 'dashboard';
+  if (url.startsWith('/accounting-system')) return 'accounting-system';
   return url.replace(/^\//, '');
 }
 
