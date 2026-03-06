@@ -1,27 +1,21 @@
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { logActivity } from '@/lib/activityLogger';
 import { Copy } from 'lucide-react';
-import { useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 
 const DIARY_STATUSES = [
-  'بدون حالة',
-  'تم التسليم',
-  'مؤجل',
-  'مرتجع',
-  'تسليم جزئي',
-  'فرق شحن',
-  'تحويلة تسليم',
-  'رفض دون شحن',
-  'غرامة مرتجع',
+  'بدون حالة', 'تم التسليم', 'مؤجل', 'مرتجع', 'تسليم جزئي',
+  'فرق شحن', 'تحويلة تسليم', 'رفض دون شحن', 'غرامة مرتجع',
 ];
 
 const RETURN_STATUSES = ['مرتجع', 'فرق شحن', 'تحويلة تسليم', 'رفض دون شحن', 'غرامة مرتجع'];
@@ -36,24 +30,35 @@ export default function FinancialSheet({ diary, diaryOrders, onCopyOrder }: Prop
   const qc = useQueryClient();
   const [partialDialog, setPartialDialog] = useState<{ open: boolean; diaryOrderId: string; order: any } | null>(null);
   const [collectedAmount, setCollectedAmount] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status, partial }: { id: string; status: string; partial?: number }) => {
+      if (diary.lock_status_updates) throw new Error('تعديل الحالات مقفل');
       const update: any = { status_inside_diary: status };
       if (partial !== undefined) update.partial_amount = partial;
       const { error } = await supabase.from('diary_orders').update(update).eq('id', id);
       if (error) throw error;
-      await logActivity('تغيير حالة أوردر في يومية', { diary_order_id: id, new_status: status });
+      await logActivity('تغيير حالة أوردر في يومية', { diary_order_id: id, new_status: status, diary_id: diary.id });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['diary-orders', diary.id] });
       toast.success('تم تحديث الحالة');
     },
+    onError: (e: any) => toast.error(e.message || 'فشل التحديث'),
   });
 
   const updateNColumn = useMutation({
     mutationFn: async ({ id, value }: { id: string; value: string }) => {
       const { error } = await supabase.from('diary_orders').update({ n_column: value.slice(0, 1) }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['diary-orders', diary.id] }),
+  });
+
+  const updateNotes = useMutation({
+    mutationFn: async ({ id, notes }: { id: string; notes: string }) => {
+      const { error } = await supabase.from('diary_orders').update({ notes }).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['diary-orders', diary.id] }),
@@ -81,27 +86,28 @@ export default function FinancialSheet({ diary, diaryOrders, onCopyOrder }: Prop
       return;
     }
     if (collected < shipping) {
-      toast.warning('المبلغ المحصل أقل من مصاريف الشحن!');
+      toast.warning('تحذير: المبلغ المحصل أقل من مصاريف الشحن!');
     }
-    const partialDelivery = collected - shipping;
+    const partialDelivery = Math.max(0, collected - shipping);
     updateStatus.mutate({
       id: partialDialog.diaryOrderId,
       status: 'تسليم جزئي',
-      partial: Math.max(0, partialDelivery),
+      partial: partialDelivery,
     });
     setPartialDialog(null);
   };
 
-  // Calculate totals
+  // Row calculation
   const calcRow = (dOrder: any) => {
     const price = dOrder.orders?.price || 0;
     const status = dOrder.status_inside_diary;
     const partial = dOrder.partial_amount || 0;
 
     return {
+      price,
       executed: status === 'تم التسليم' ? price : 0,
       postponed: status === 'مؤجل' ? price : 0,
-      returned: RETURN_STATUSES.includes(status) ? (status === 'تسليم جزئي' ? 0 : price) : (status === 'تسليم جزئي' ? (price - partial) : 0),
+      returned: status === 'تسليم جزئي' ? (price - partial) : (RETURN_STATUSES.includes(status) ? price : 0),
       partial: status === 'تسليم جزئي' ? partial : 0,
       shippingDiff: status === 'فرق شحن' ? price : 0,
       transferDelivery: status === 'تحويلة تسليم' ? price : 0,
@@ -111,20 +117,47 @@ export default function FinancialSheet({ diary, diaryOrders, onCopyOrder }: Prop
     };
   };
 
-  const totals = diaryOrders.reduce(
-    (acc, dOrder) => {
+  // Filter
+  const filteredOrders = diaryOrders.filter((dOrder: any) => {
+    if (!searchTerm) return true;
+    const o = dOrder.orders;
+    const term = searchTerm.toLowerCase();
+    return (
+      o?.customer_name?.toLowerCase().includes(term) ||
+      o?.barcode?.toLowerCase().includes(term) ||
+      o?.customer_code?.toLowerCase().includes(term)
+    );
+  });
+
+  // Totals
+  const totals = filteredOrders.reduce(
+    (acc: any, dOrder: any) => {
       const row = calcRow(dOrder);
+      acc.price += row.price;
       acc.executed += row.executed;
       acc.postponed += row.postponed;
       acc.returned += row.returned;
       acc.partial += row.partial;
+      acc.shippingDiff += row.shippingDiff;
+      acc.transferDelivery += row.transferDelivery;
+      acc.refuseNoShipping += row.refuseNoShipping;
+      acc.returnPenalty += row.returnPenalty;
       return acc;
     },
-    { executed: 0, postponed: 0, returned: 0, partial: 0 }
+    { price: 0, executed: 0, postponed: 0, returned: 0, partial: 0, shippingDiff: 0, transferDelivery: 0, refuseNoShipping: 0, returnPenalty: 0 }
   );
 
   return (
     <>
+      <div className="mb-3">
+        <Input
+          placeholder="بحث بالاسم أو الباركود أو الكود..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="max-w-sm"
+        />
+      </div>
+
       <div className="border rounded-lg overflow-auto">
         <Table>
           <TableHeader>
@@ -138,24 +171,28 @@ export default function FinancialSheet({ diary, diaryOrders, onCopyOrder }: Prop
               <TableHead className="text-right">نزول</TableHead>
               <TableHead className="text-right">مرتجع</TableHead>
               <TableHead className="text-right">تسليم جزئي</TableHead>
+              <TableHead className="text-right">فرق شحن</TableHead>
+              <TableHead className="text-right">تحويلة تسليم</TableHead>
+              <TableHead className="text-right">رفض دون شحن</TableHead>
+              <TableHead className="text-right">غرامة مرتجع</TableHead>
               <TableHead className="text-right">الحالة</TableHead>
               <TableHead className="text-right">حالة المرتجع</TableHead>
-              <TableHead className="text-right w-16">نسخ</TableHead>
+              <TableHead className="text-right w-12">نسخ</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {diaryOrders.length === 0 ? (
+            {filteredOrders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={16} className="text-center py-8 text-muted-foreground">
                   لا توجد أوردرات في هذه اليومية
                 </TableCell>
               </TableRow>
             ) : (
-              diaryOrders.map((dOrder, idx) => {
+              filteredOrders.map((dOrder: any, idx: number) => {
                 const order = dOrder.orders;
                 const row = calcRow(dOrder);
                 return (
-                  <TableRow key={dOrder.id}>
+                  <TableRow key={dOrder.id} className={dOrder.locked_status ? 'bg-muted/30' : ''}>
                     <TableCell className="text-sm">{idx + 1}</TableCell>
                     <TableCell className="text-sm font-medium">{order?.customer_name}</TableCell>
                     <TableCell>
@@ -169,10 +206,14 @@ export default function FinancialSheet({ diary, diaryOrders, onCopyOrder }: Prop
                     </TableCell>
                     <TableCell className="text-sm">{order?.barcode || order?.customer_code}</TableCell>
                     <TableCell className="text-sm font-medium">{order?.price}</TableCell>
-                    <TableCell className="text-sm text-green-600">{row.executed || ''}</TableCell>
-                    <TableCell className="text-sm text-yellow-600">{row.postponed || ''}</TableCell>
-                    <TableCell className="text-sm text-red-600">{row.returned || ''}</TableCell>
-                    <TableCell className="text-sm text-blue-600">{row.partial || ''}</TableCell>
+                    <TableCell className="text-sm text-green-600 font-medium">{row.executed || ''}</TableCell>
+                    <TableCell className="text-sm text-yellow-600 font-medium">{row.postponed || ''}</TableCell>
+                    <TableCell className="text-sm text-red-600 font-medium">{row.returned || ''}</TableCell>
+                    <TableCell className="text-sm text-blue-600 font-medium">{row.partial || ''}</TableCell>
+                    <TableCell className="text-sm text-orange-600">{row.shippingDiff || ''}</TableCell>
+                    <TableCell className="text-sm text-purple-600">{row.transferDelivery || ''}</TableCell>
+                    <TableCell className="text-sm text-gray-600">{row.refuseNoShipping || ''}</TableCell>
+                    <TableCell className="text-sm text-pink-600">{row.returnPenalty || ''}</TableCell>
                     <TableCell>
                       <Select
                         value={dOrder.status_inside_diary}
@@ -200,20 +241,51 @@ export default function FinancialSheet({ diary, diaryOrders, onCopyOrder }: Prop
               })
             )}
           </TableBody>
-          {diaryOrders.length > 0 && (
+          {filteredOrders.length > 0 && (
             <TableFooter>
-              <TableRow className="bg-muted/30 font-bold">
-                <TableCell colSpan={5} className="text-right">الإجمالي</TableCell>
+              <TableRow className="bg-muted/30 font-bold text-sm">
+                <TableCell colSpan={4} className="text-right">الإجمالي</TableCell>
+                <TableCell>{totals.price}</TableCell>
                 <TableCell className="text-green-600">{totals.executed}</TableCell>
                 <TableCell className="text-yellow-600">{totals.postponed}</TableCell>
                 <TableCell className="text-red-600">{totals.returned}</TableCell>
                 <TableCell className="text-blue-600">{totals.partial}</TableCell>
+                <TableCell className="text-orange-600">{totals.shippingDiff}</TableCell>
+                <TableCell className="text-purple-600">{totals.transferDelivery}</TableCell>
+                <TableCell className="text-gray-600">{totals.refuseNoShipping}</TableCell>
+                <TableCell className="text-pink-600">{totals.returnPenalty}</TableCell>
                 <TableCell colSpan={3}></TableCell>
               </TableRow>
             </TableFooter>
           )}
         </Table>
       </div>
+
+      {/* Summary Cards */}
+      {filteredOrders.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 mt-4">
+          <div className="bg-muted/50 rounded-lg p-3 text-center">
+            <p className="text-xs text-muted-foreground">عدد الأوردرات</p>
+            <p className="text-lg font-bold">{filteredOrders.length}</p>
+          </div>
+          <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-3 text-center">
+            <p className="text-xs text-muted-foreground">إجمالي المنفذ</p>
+            <p className="text-lg font-bold text-green-600">{totals.executed}</p>
+          </div>
+          <div className="bg-yellow-50 dark:bg-yellow-950/20 rounded-lg p-3 text-center">
+            <p className="text-xs text-muted-foreground">إجمالي النزول</p>
+            <p className="text-lg font-bold text-yellow-600">{totals.postponed}</p>
+          </div>
+          <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-3 text-center">
+            <p className="text-xs text-muted-foreground">إجمالي المرتجع</p>
+            <p className="text-lg font-bold text-red-600">{totals.returned}</p>
+          </div>
+          <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 text-center">
+            <p className="text-xs text-muted-foreground">تسليم جزئي</p>
+            <p className="text-lg font-bold text-blue-600">{totals.partial}</p>
+          </div>
+        </div>
+      )}
 
       {/* Partial Delivery Dialog */}
       <Dialog open={!!partialDialog?.open} onOpenChange={(o) => !o && setPartialDialog(null)}>
@@ -222,8 +294,9 @@ export default function FinancialSheet({ diary, diaryOrders, onCopyOrder }: Prop
             <DialogTitle>تسليم جزئي</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="text-sm text-muted-foreground">
-              سعر الأوردر: {partialDialog?.order?.price} | الشحن: {partialDialog?.order?.delivery_price}
+            <div className="bg-muted/50 p-3 rounded text-sm space-y-1">
+              <div>سعر الأوردر: <strong>{partialDialog?.order?.price}</strong></div>
+              <div>مصاريف الشحن: <strong>{partialDialog?.order?.delivery_price}</strong></div>
             </div>
             <div>
               <label className="text-sm font-medium">المبلغ المحصل من العميل</label>
@@ -235,10 +308,13 @@ export default function FinancialSheet({ diary, diaryOrders, onCopyOrder }: Prop
                 className="mt-1"
               />
             </div>
-            {collectedAmount && (
-              <div className="text-sm space-y-1 bg-muted/50 p-3 rounded">
-                <div>تسليم جزئي = {Math.max(0, parseFloat(collectedAmount) - (partialDialog?.order?.delivery_price || 0))}</div>
-                <div>مرتجع = {(partialDialog?.order?.price || 0) - Math.max(0, parseFloat(collectedAmount) - (partialDialog?.order?.delivery_price || 0))}</div>
+            {collectedAmount && parseFloat(collectedAmount) > 0 && (
+              <div className="text-sm space-y-1 bg-blue-50 dark:bg-blue-950/20 p-3 rounded border">
+                <div>تسليم جزئي = <strong>{Math.max(0, parseFloat(collectedAmount) - (partialDialog?.order?.delivery_price || 0))}</strong></div>
+                <div>مرتجع = <strong>{(partialDialog?.order?.price || 0) - Math.max(0, parseFloat(collectedAmount) - (partialDialog?.order?.delivery_price || 0))}</strong></div>
+                {parseFloat(collectedAmount) < (partialDialog?.order?.delivery_price || 0) && (
+                  <div className="text-destructive font-medium mt-2">⚠️ المبلغ المحصل أقل من مصاريف الشحن!</div>
+                )}
               </div>
             )}
           </div>

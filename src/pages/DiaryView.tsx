@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { logActivity } from '@/lib/activityLogger';
-import { ArrowRight, Lock, Unlock, Ban, Check, Download, Share2 } from 'lucide-react';
+import { ArrowRight, Lock, Unlock, Ban, Check, Download, Share2, Archive } from 'lucide-react';
 import { format } from 'date-fns';
 import FinancialSheet from '@/components/diary/FinancialSheet';
 import OrangeSheet from '@/components/diary/OrangeSheet';
@@ -41,7 +41,7 @@ export default function DiaryView() {
     enabled: !!officeId,
   });
 
-  const { data: diaryOrders = [], isLoading: ordersLoading } = useQuery({
+  const { data: diaryOrders = [] } = useQuery({
     queryKey: ['diary-orders', diaryId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -59,7 +59,7 @@ export default function DiaryView() {
       const newVal = !diary?.lock_status_updates;
       const { error } = await supabase.from('diaries').update({ lock_status_updates: newVal }).eq('id', diaryId!);
       if (error) throw error;
-      await logActivity(newVal ? 'قفل تعديل الحالات' : 'فتح تعديل الحالات', { diary_id: diaryId });
+      await logActivity(newVal ? 'تجميد تحديث الحالات' : 'إلغاء تجميد الحالات', { diary_id: diaryId });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['diary', diaryId] });
@@ -77,6 +77,23 @@ export default function DiaryView() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['diary', diaryId] });
       toast.success('تم التحديث');
+    },
+  });
+
+  const toggleClose = useMutation({
+    mutationFn: async () => {
+      const newClosed = !diary?.is_closed;
+      const { error } = await supabase
+        .from('diaries')
+        .update({ is_closed: newClosed, closed_at: newClosed ? new Date().toISOString() : null })
+        .eq('id', diaryId!);
+      if (error) throw error;
+      await logActivity(newClosed ? 'قفل يومية' : 'إعادة فتح يومية', { diary_id: diaryId });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['diary', diaryId] });
+      qc.invalidateQueries({ queryKey: ['diaries', officeId] });
+      toast.success(diary?.is_closed ? 'تم إعادة فتح اليومية' : 'تم قفل اليومية');
     },
   });
 
@@ -101,20 +118,33 @@ export default function DiaryView() {
               {office?.name} - يومية رقم {diary.diary_number}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {format(new Date(diary.diary_date), 'dd/MM/yyyy')}
+              {format(new Date(diary.diary_date), 'dd/MM/yyyy')} | {diaryOrders.length} أوردر
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {/* Close/Reopen */}
+          <Button
+            size="sm"
+            variant={diary.is_closed ? 'default' : 'secondary'}
+            onClick={() => toggleClose.mutate()}
+          >
+            {diary.is_closed ? <Unlock className="h-4 w-4 ml-1" /> : <Archive className="h-4 w-4 ml-1" />}
+            {diary.is_closed ? 'إعادة فتح' : 'قفل اليومية'}
+          </Button>
+
+          {/* Lock Status Updates */}
           <Button
             size="sm"
             variant={diary.lock_status_updates ? 'destructive' : 'outline'}
             onClick={() => toggleLock.mutate()}
           >
             {diary.lock_status_updates ? <Unlock className="h-4 w-4 ml-1" /> : <Lock className="h-4 w-4 ml-1" />}
-            {diary.lock_status_updates ? 'فتح التعديل' : 'قفل التعديل'}
+            {diary.lock_status_updates ? 'إلغاء التجميد' : 'تجميد الحالات'}
           </Button>
+
+          {/* Prevent New Orders */}
           <Button
             size="sm"
             variant={diary.prevent_new_orders ? 'secondary' : 'outline'}
@@ -123,6 +153,8 @@ export default function DiaryView() {
             {diary.prevent_new_orders ? <Check className="h-4 w-4 ml-1" /> : <Ban className="h-4 w-4 ml-1" />}
             {diary.prevent_new_orders ? 'السماح بالإضافة' : 'منع الإضافة'}
           </Button>
+
+          {/* Export */}
           <Button size="sm" variant="outline" onClick={() => exportDiaryToPDF(diary, diaryOrders, office?.name || '')}>
             <Download className="h-4 w-4 ml-1" /> PDF
           </Button>
@@ -136,9 +168,12 @@ export default function DiaryView() {
       </div>
 
       {/* Status Badges */}
-      <div className="flex gap-2">
-        {diary.is_closed && <Badge variant="secondary">مقفولة</Badge>}
-        {diary.lock_status_updates && <Badge variant="destructive">تعديل الحالات مقفل</Badge>}
+      <div className="flex flex-wrap gap-2">
+        <Badge variant={diary.is_closed ? 'secondary' : 'default'}>
+          {diary.is_closed ? 'مقفولة' : 'مفتوحة'}
+        </Badge>
+        {diary.is_archived && <Badge variant="outline">مؤرشفة</Badge>}
+        {diary.lock_status_updates && <Badge variant="destructive">الحالات مجمدة</Badge>}
         {diary.prevent_new_orders && <Badge variant="secondary">الإضافة ممنوعة</Badge>}
       </div>
 
@@ -146,21 +181,13 @@ export default function DiaryView() {
       <Tabs defaultValue="financial" dir="rtl">
         <TabsList>
           <TabsTrigger value="financial">الشيت المالي</TabsTrigger>
-          <TabsTrigger value="orange">شيت البرتقالي</TabsTrigger>
+          <TabsTrigger value="orange">الشيت البرتقالي</TabsTrigger>
         </TabsList>
         <TabsContent value="financial" className="mt-4">
-          <FinancialSheet
-            diary={diary}
-            diaryOrders={diaryOrders}
-            onCopyOrder={handleCopyOrder}
-          />
+          <FinancialSheet diary={diary} diaryOrders={diaryOrders} onCopyOrder={handleCopyOrder} />
         </TabsContent>
         <TabsContent value="orange" className="mt-4">
-          <OrangeSheet
-            diary={diary}
-            diaryOrders={diaryOrders}
-            onCopyOrder={handleCopyOrder}
-          />
+          <OrangeSheet diary={diary} diaryOrders={diaryOrders} onCopyOrder={handleCopyOrder} />
         </TabsContent>
       </Tabs>
 
