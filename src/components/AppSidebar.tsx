@@ -42,6 +42,7 @@ const accountingItems = [
 const reportsItems = [
   { title: 'التقرير اليومي', url: '/daily-report', icon: Calendar },
   { title: 'التقارير المالية', url: '/financial-reports', icon: BarChart3 },
+  { title: 'تقرير المكاتب', url: '/office-report', icon: FileBarChart },
   { title: 'إحصائيات المناديب', url: '/courier-stats', icon: UserCheck },
   { title: 'إحصائيات المكاتب', url: '/office-stats', icon: TrendingUp },
   { title: 'تقرير الأرباح', url: '/profit-report', icon: Calculator },
