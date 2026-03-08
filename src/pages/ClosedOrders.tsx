@@ -52,9 +52,10 @@ export default function ClosedOrders() {
 
   const deleteSelected = async () => {
     if (selected.size === 0) return;
-    if (!confirm(`حذف ${selected.size} أوردر نهائياً؟`)) return;
-    await supabase.from('orders').delete().in('id', Array.from(selected));
-    toast.success('تم الحذف');
+    if (!confirm(`نقل ${selected.size} أوردر إلى سلة المحذوفات؟`)) return;
+    const ids = Array.from(selected);
+    moveToTrash(ids);
+    toast.success('تم النقل إلى سلة المحذوفات');
     setSelected(new Set());
     loadOrders();
   };
