@@ -221,9 +221,15 @@ export default function OrangeSheet({ diary, diaryOrders, onCopyOrder }: Props) 
                 <TableCell colSpan={5} className="text-right">الإجمالي</TableCell>
                 <TableCell>{totalAmount}</TableCell>
                 <TableCell>{totalShipping}</TableCell>
-                <TableCell></TableCell>
-                <TableCell className="text-green-600">{totalDelivered + totalPartialDelivered}</TableCell>
+                <TableCell>{totalPickup}</TableCell>
+                <TableCell className="text-green-600">{totalArrived}</TableCell>
                 <TableCell colSpan={3}></TableCell>
+              </TableRow>
+              <TableRow className="bg-orange-100/50 dark:bg-orange-950/30 font-bold text-sm">
+                <TableCell colSpan={5} className="text-right">المستحق للعميل</TableCell>
+                <TableCell colSpan={7} className="text-primary text-base">
+                  {totalAmount} - ({totalShipping} + {totalArrived} + {totalPickup}) = <span className="text-lg">{totalDue}</span>
+                </TableCell>
               </TableRow>
             </TableFooter>
           )}
