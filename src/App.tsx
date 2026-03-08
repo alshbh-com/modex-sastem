@@ -110,6 +110,8 @@ const App = () => (
               <Route path="/status-management" element={<StatusManagement />} />
               <Route path="/order-notes" element={<OrderNotes />} />
               <Route path="/data-export" element={<DataExport />} />
+              <Route path="/office-report" element={<OfficeReport />} />
+              <Route path="/trash" element={<TrashBin />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
