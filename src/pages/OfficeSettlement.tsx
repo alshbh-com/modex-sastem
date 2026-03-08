@@ -91,7 +91,7 @@ export default function OfficeSettlement() {
 
   const pickupRateNum = parseFloat(pickupRate) || 0;
   const pickupTotal = pickupUnits * pickupRateNum;
-  const due = totalAmount - (pickupTotal + totalArrived);
+  const due = totalAmount - (totalShipping + totalArrived + pickupTotal);
 
   return (
     <div className="space-y-4">
