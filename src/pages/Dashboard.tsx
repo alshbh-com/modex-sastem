@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
+import { usePermissions, urlToSectionKey } from '@/hooks/usePermissions';
 import {
   Package, PackageSearch, Archive, Search, Building2, MapPin, Box,
   Truck, Wallet, Building, DollarSign, Printer, ScrollText, Settings, Users,
   BarChart3, UserCheck, TrendingUp, Calendar, Locate, MessageSquare, FileSpreadsheet,
-  CircleDot, Calculator, Contact, Clock, CheckCircle2, XCircle
+  CircleDot, Calculator, Contact, Clock, CheckCircle2, XCircle, FileBarChart, Trash2
 } from 'lucide-react';
 
 const sections = [
@@ -35,11 +36,20 @@ const sections = [
   { title: 'تصدير البيانات', url: '/data-export', icon: FileSpreadsheet, color: 'hsl(142,76%,36%)' },
   { title: 'سجل الحركات', url: '/logs', icon: ScrollText, color: 'hsl(215,20%,60%)' },
   { title: 'الإعدادات', url: '/settings', icon: Settings, color: 'hsl(215,20%,60%)' },
+  { title: 'تقرير المكاتب الجديد', url: '/office-report', icon: FileBarChart, color: 'hsl(217,91%,60%)' },
+  { title: 'سلة المحذوفات', url: '/trash', icon: Trash2, color: 'hsl(0,72%,51%)' },
+  { title: 'سيستم الحسابات', url: '/accounting-system', icon: Calculator, color: 'hsl(270,60%,60%)' },
 ];
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { canView } = usePermissions();
   const [stats, setStats] = useState({ total: 0, open: 0, delivered: 0, returned: 0, todayCount: 0, todayShipping: 0 });
+
+  const visibleSections = useMemo(
+    () => sections.filter((section) => canView(urlToSectionKey(section.url))),
+    [canView]
+  );
 
   useEffect(() => { loadStats(); }, []);
 
