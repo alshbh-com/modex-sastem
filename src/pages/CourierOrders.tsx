@@ -195,10 +195,29 @@ export default function CourierOrders() {
       <div className="mx-auto max-w-4xl space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl sm:text-2xl font-bold">أوردراتي</h1>
-          <Button variant="ghost" className="text-destructive" onClick={logout}>
-            <LogOut className="h-4 w-4 ml-2" />خروج
-          </Button>
+          <div className="flex items-center gap-2">
+            {locationGranted === true && (
+              <Badge variant="default" className="text-xs gap-1">
+                <MapPin className="h-3 w-3" /> الموقع مفعّل
+              </Badge>
+            )}
+            <Button variant="ghost" className="text-destructive" onClick={logout}>
+              <LogOut className="h-4 w-4 ml-2" />خروج
+            </Button>
+          </div>
         </div>
+
+        {locationGranted === false && (
+          <Card className="border-destructive bg-destructive/10">
+            <CardContent className="p-3 flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
+              <div>
+                <p className="font-bold text-sm text-destructive">تفعيل الموقع مطلوب!</p>
+                <p className="text-xs text-muted-foreground">يجب تفعيل خدمة الموقع (GPS) حتى تتمكن من استلام الأوردرات. اسمح بالوصول للموقع من إعدادات المتصفح.</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="bg-card border-border">
           <CardContent className="p-3 flex justify-between items-center">
