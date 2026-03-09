@@ -19,6 +19,7 @@ interface Props {
 export default function AddOrderDialog({ onOrderAdded, editOrder, onClose }: Props) {
   const [open, setOpen] = useState(!!editOrder);
   const [loading, setLoading] = useState(false);
+  const [dropdownsLoaded, setDropdownsLoaded] = useState(false);
 
   const [offices, setOffices] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -53,13 +54,21 @@ export default function AddOrderDialog({ onOrderAdded, editOrder, onClose }: Pro
 
   useEffect(() => {
     if (!editOrder) return;
-
     setOpen(true);
-    setForm(mapOrderToForm(editOrder));
-    loadDropdowns(editOrder);
+    setDropdownsLoaded(false);
+    
+    // Load dropdowns FIRST, then set form values
+    loadDropdowns(editOrder).then(() => {
+      setForm(mapOrderToForm(editOrder));
+      setDropdownsLoaded(true);
+    });
   }, [editOrder]);
 
-  useEffect(() => { if (open && !editOrder) loadDropdowns(); }, [open]);
+  useEffect(() => {
+    if (open && !editOrder) {
+      loadDropdowns().then(() => setDropdownsLoaded(true));
+    }
+  }, [open]);
 
   const loadDropdowns = async (orderForEdit?: any) => {
     const [o, p, s] = await Promise.all([
@@ -70,9 +79,9 @@ export default function AddOrderDialog({ onOrderAdded, editOrder, onClose }: Pro
 
     const loadedOffices = o.data || [];
     const currentOfficeId = orderForEdit?.office_id;
-    const hasCurrentOffice = !!currentOfficeId && loadedOffices.some((office) => office.id === currentOfficeId);
 
-    if (currentOfficeId && !hasCurrentOffice) {
+    // Ensure the current office is always in the list
+    if (currentOfficeId && !loadedOffices.some((office: any) => office.id === currentOfficeId)) {
       loadedOffices.unshift({
         id: currentOfficeId,
         name: orderForEdit?.offices?.name || 'المكتب الحالي',
@@ -198,9 +207,11 @@ export default function AddOrderDialog({ onOrderAdded, editOrder, onClose }: Pro
               <Input value={form.customer_code} onChange={e => set('customer_code', e.target.value)} className="bg-secondary border-border" placeholder="كود المكتب" />
             </div>
             <div className="space-y-2">
-              <Label>المكتب *</Label>
-              <Select value={form.office_id} onValueChange={v => set('office_id', v)}>
-                <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="اختر مكتب (إجباري)" /></SelectTrigger>
+              <Label>المكتب * {editOrder && form.office_id && offices.find(o => o.id === form.office_id) && (
+                <span className="text-xs text-muted-foreground mr-2">({offices.find(o => o.id === form.office_id)?.name})</span>
+              )}</Label>
+              <Select value={form.office_id} onValueChange={v => set('office_id', v)} disabled={offices.length === 0}>
+                <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder={offices.length === 0 ? 'جاري التحميل...' : 'اختر مكتب (إجباري)'} /></SelectTrigger>
                 <SelectContent>{offices.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
