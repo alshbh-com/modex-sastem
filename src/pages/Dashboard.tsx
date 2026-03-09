@@ -161,13 +161,13 @@ export default function Dashboard() {
       const co = orders.filter(o => o.courier_id === p.id);
       const del = co.filter(o => deliveredIds.includes(o.status_id)).length;
       const ret = co.filter(o => returnedIds.includes(o.status_id)).length;
-      const loc = locations.find((l: any) => l.courier_id === p.id);
+      const loc = locations.find((l: any) => l.courier_id === p.id) as any;
       const isOnline = loc ? (Date.now() - new Date(loc.updated_at).getTime()) < 600000 : false;
       return {
         id: p.id, name: p.full_name || 'بدون اسم', phone: p.phone || '-',
         totalOrders: co.length, delivered: del, returned: ret, pending: co.length - del - ret,
         successRate: co.length > 0 ? Math.round((del / co.length) * 100) : 0,
-        isOnline, lastUpdate: loc?.updated_at,
+        isOnline, lastUpdate: loc?.updated_at as string | undefined,
       };
     }).sort((a, b) => b.pending - a.pending);
     setCourierSummaries(summaries);
