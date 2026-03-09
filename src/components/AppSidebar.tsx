@@ -44,7 +44,7 @@ const reportsItems = [
   { title: 'التقارير المالية', url: '/financial-reports', icon: BarChart3 },
   { title: 'تقرير المكاتب الجديد', url: '/office-report', icon: FileBarChart },
   { title: 'إحصائيات المناديب', url: '/courier-stats', icon: UserCheck },
-  { title: 'تتبع المناديب', url: '/courier-tracking', icon: Navigation },
+  { title: 'تتبع المناديب', url: '/courier-tracking', icon: Navigation2 },
   { title: 'إحصائيات المكاتب', url: '/office-stats', icon: TrendingUp },
   { title: 'تقرير الأرباح', url: '/profit-report', icon: Calculator },
 ];

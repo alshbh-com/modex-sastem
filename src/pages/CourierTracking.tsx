@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { MapPin, Package, Truck, CheckCircle, XCircle, Clock, Search, Phone, User, Navigation } from 'lucide-react';
+import { MapPin, Package, Truck, CheckCircle, XCircle, Clock, Search, Phone, User, Navigation2 } from 'lucide-react';
 
 // Egypt governorate approximate center coordinates
 const GOVERNORATE_COORDS: Record<string, [number, number]> = {
