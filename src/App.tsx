@@ -27,6 +27,7 @@ import CourierOrders from "@/pages/CourierOrders";
 import FinancialReports from "@/pages/FinancialReports";
 import CourierStats from "@/pages/CourierStats";
 import CourierTracking from "@/pages/CourierTracking";
+import InternalChat from "@/pages/InternalChat";
 import OfficeStats from "@/pages/OfficeStats";
 import CustomersPage from "@/pages/CustomersPage";
 import TrackingPage from "@/pages/TrackingPage";
