@@ -179,7 +179,7 @@ export default function DiaryView() {
       </div>
 
       {/* Sheets */}
-      <Tabs defaultValue="financial" dir="rtl">
+      <Tabs value={activeSheet} onValueChange={(v) => setActiveSheet(v as 'financial' | 'orange')} dir="rtl">
         <TabsList>
           <TabsTrigger value="financial">الشيت المالي</TabsTrigger>
           <TabsTrigger value="orange">الشيت البرتقالي</TabsTrigger>
