@@ -145,6 +145,7 @@ export default function AddOrderDialog({ onOrderAdded, editOrder, onClose }: Pro
         color: form.color, size: form.size,
         address: form.address,
         notes: form.notes || '',
+        priority: form.priority || 'normal',
       };
       orderData.office_id = form.office_id;
       if (form.product_id) orderData.product_id = form.product_id;
