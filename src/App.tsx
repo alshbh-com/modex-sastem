@@ -115,6 +115,7 @@ const App = () => (
               <Route path="/data-export" element={<DataExport />} />
               <Route path="/office-report" element={<OfficeReport />} />
               <Route path="/trash" element={<TrashBin />} />
+              <Route path="/chat" element={<InternalChat />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
