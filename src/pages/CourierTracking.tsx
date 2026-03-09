@@ -210,7 +210,7 @@ export default function CourierTracking() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-          <Navigation className="h-6 w-6 text-primary" />
+          <Navigation2 className="h-6 w-6 text-primary" />
           تتبع المناديب
         </h1>
       </div>
