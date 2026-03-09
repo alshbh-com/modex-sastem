@@ -136,7 +136,7 @@ export default function InternalChat() {
       .or(`and(sender_id.eq.${user?.id},receiver_id.eq.${contactId}),and(sender_id.eq.${contactId},receiver_id.eq.${user?.id})`)
       .order('created_at', { ascending: true })
       .limit(200);
-    setMessages((data as Message[]) || []);
+    setMessages(((data as any) || []) as Message[]);
   };
 
   const markAsRead = async (contactId: string) => {
