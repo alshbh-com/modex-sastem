@@ -36,27 +36,29 @@ export default function AddOrderDialog({ onOrderAdded, editOrder, onClose }: Pro
 
   useEffect(() => {
     if (editOrder) {
-      setForm({
-        customer_name: editOrder.customer_name || '',
-        customer_phone: editOrder.customer_phone || '',
-        customer_code: editOrder.customer_code || '',
-        product_name: editOrder.product_name || '',
-        product_id: editOrder.product_id || '',
-        quantity: String(editOrder.quantity || 1),
-        price: String(editOrder.price || 0),
-        delivery_price: String(editOrder.delivery_price || 0),
-        office_id: editOrder.office_id || '',
-        status_id: editOrder.status_id || '',
-        color: editOrder.color || '',
-        size: editOrder.size || '',
-        address: editOrder.address || '',
-        notes: editOrder.notes || '',
-      });
       setOpen(true);
+      loadDropdowns().then(() => {
+        setForm({
+          customer_name: editOrder.customer_name || '',
+          customer_phone: editOrder.customer_phone || '',
+          customer_code: editOrder.customer_code || '',
+          product_name: editOrder.product_name || '',
+          product_id: editOrder.product_id || '',
+          quantity: String(editOrder.quantity || 1),
+          price: String(editOrder.price || 0),
+          delivery_price: String(editOrder.delivery_price || 0),
+          office_id: editOrder.office_id || '',
+          status_id: editOrder.status_id || '',
+          color: editOrder.color || '',
+          size: editOrder.size || '',
+          address: editOrder.address || '',
+          notes: editOrder.notes || '',
+        });
+      });
     }
   }, [editOrder]);
 
-  useEffect(() => { if (open) loadDropdowns(); }, [open]);
+  useEffect(() => { if (open && !editOrder) loadDropdowns(); }, [open]);
 
   const loadDropdowns = async () => {
     const [o, p, s] = await Promise.all([
