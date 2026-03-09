@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { logActivity } from '@/lib/activityLogger';
@@ -207,9 +208,12 @@ export default function AddOrderDialog({ onOrderAdded, editOrder, onClose }: Pro
               <Input value={form.customer_code} onChange={e => set('customer_code', e.target.value)} className="bg-secondary border-border" placeholder="كود المكتب" />
             </div>
             <div className="space-y-2">
-              <Label>المكتب * {editOrder && form.office_id && offices.find(o => o.id === form.office_id) && (
-                <span className="text-xs text-muted-foreground mr-2">({offices.find(o => o.id === form.office_id)?.name})</span>
-              )}</Label>
+              <Label>المكتب *</Label>
+              {editOrder && editOrder.offices?.name && (
+                <Badge variant="outline" className="mb-1 text-sm font-medium bg-primary/10 text-primary border-primary/30">
+                  📍 المكتب الحالي: {editOrder.offices.name}
+                </Badge>
+              )}
               <Select value={form.office_id} onValueChange={v => set('office_id', v)} disabled={offices.length === 0}>
                 <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder={offices.length === 0 ? 'جاري التحميل...' : 'اختر مكتب (إجباري)'} /></SelectTrigger>
                 <SelectContent>{offices.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent>
