@@ -319,81 +319,120 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Chat Widget */}
-        <Card className="bg-card border-border">
-          <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-primary" />
-              المحادثات
-              {totalUnread > 0 && <Badge variant="destructive" className="text-xs">{totalUnread}</Badge>}
-            </CardTitle>
-            <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/chat')}>
-              فتح الشات
-            </Button>
+        {/* Chat Widget - WhatsApp Style */}
+        <Card className="bg-card border-border overflow-hidden">
+          <CardHeader className="p-0">
+            <div className="bg-[hsl(142,70%,28%)] text-white p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                <span className="font-bold text-sm">المحادثات</span>
+                {totalUnread > 0 && (
+                  <span className="bg-white text-[hsl(142,70%,28%)] text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center">{totalUnread}</span>
+                )}
+              </div>
+              <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 text-xs h-7" onClick={() => navigate('/chat')}>
+                فتح الكل
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent className="p-2">
+          <CardContent className="p-0">
             {!selectedChat ? (
-              <ScrollArea className="h-[320px]">
-                <div className="space-y-1 px-1">
-                  {chatContacts.length === 0 && (
-                    <p className="text-center text-muted-foreground text-sm py-8">لا يوجد محادثات</p>
-                  )}
-                  {chatContacts.map(c => (
-                    <button
-                      key={c.id}
-                      onClick={() => setSelectedChat(c.id)}
-                      className="w-full p-2.5 flex items-center gap-2.5 text-right hover:bg-accent/50 transition-colors rounded-lg"
-                    >
-                      <div className="rounded-full p-1.5 bg-primary/10 shrink-0">
-                        <User className="h-3.5 w-3.5 text-primary" />
+              <ScrollArea className="h-[340px]">
+                {chatContacts.length === 0 && (
+                  <p className="text-center text-muted-foreground text-sm py-12">لا يوجد محادثات</p>
+                )}
+                {chatContacts.map((c, i) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedChat(c.id)}
+                    className={`w-full p-3 flex items-center gap-3 text-right hover:bg-accent/40 transition-colors ${i < chatContacts.length - 1 ? 'border-b border-border' : ''}`}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-[hsl(142,70%,28%)]/10 flex items-center justify-center shrink-0">
+                      <User className="h-5 w-5 text-[hsl(142,70%,28%)]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-sm truncate">{c.name}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {c.lastTime && new Date(c.lastTime).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm truncate">{c.name}</span>
-                          {c.unread > 0 && <Badge variant="destructive" className="text-xs">{c.unread}</Badge>}
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Badge variant="outline" className="text-xs">{c.role}</Badge>
-                          {c.lastTime && <span className="text-xs text-muted-foreground">{new Date(c.lastTime).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>}
-                        </div>
-                        {c.lastMessage && <p className="text-xs text-muted-foreground truncate mt-0.5">{c.lastMessage}</p>}
+                      <div className="flex items-center justify-between mt-0.5">
+                        <p className="text-xs text-muted-foreground truncate max-w-[180px]">
+                          {c.lastMessage || c.role}
+                        </p>
+                        {c.unread > 0 && (
+                          <span className="bg-[hsl(142,70%,28%)] text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">{c.unread}</span>
+                        )}
                       </div>
-                    </button>
-                  ))}
-                </div>
+                    </div>
+                  </button>
+                ))}
               </ScrollArea>
             ) : (
-              <div className="flex flex-col h-[320px]">
-                {/* Chat header */}
-                <div className="flex items-center gap-2 p-2 border-b border-border shrink-0">
-                  <Button variant="ghost" size="sm" className="text-xs" onClick={() => setSelectedChat(null)}>← رجوع</Button>
-                  <span className="font-medium text-sm">{selectedContactInfo?.name}</span>
-                  <Badge variant="outline" className="text-xs">{selectedContactInfo?.role}</Badge>
+              <div className="flex flex-col h-[340px]">
+                {/* WhatsApp-style header */}
+                <div className="bg-[hsl(142,70%,28%)] text-white flex items-center gap-2 p-2 shrink-0">
+                  <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 h-7 w-7" onClick={() => setSelectedChat(null)}>
+                    ←
+                  </Button>
+                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold">{selectedContactInfo?.name}</p>
+                    <p className="text-[10px] opacity-80">{selectedContactInfo?.role}</p>
+                  </div>
                 </div>
-                {/* Messages */}
-                <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-2 space-y-1.5">
-                  {chatMessages.length === 0 && <p className="text-center text-muted-foreground text-xs py-4">ابدأ المحادثة</p>}
+                {/* Messages with WhatsApp wallpaper */}
+                <div
+                  ref={chatScrollRef}
+                  className="flex-1 overflow-y-auto p-3 space-y-1"
+                  style={{ backgroundColor: 'hsl(var(--muted) / 0.3)', backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%239C92AC\' fill-opacity=\'0.05\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}
+                >
+                  {chatMessages.length === 0 && (
+                    <div className="flex items-center justify-center h-full">
+                      <span className="bg-accent/80 text-muted-foreground text-xs px-3 py-1 rounded-full">ابدأ المحادثة 💬</span>
+                    </div>
+                  )}
                   {chatMessages.map((m: any) => {
                     const isMine = m.sender_id === user?.id;
                     return (
-                      <div key={m.id} className={`flex ${isMine ? 'justify-start' : 'justify-end'}`}>
-                        <div className={`max-w-[80%] rounded-lg px-2.5 py-1.5 text-xs ${isMine ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
-                          <p>{m.message}</p>
-                          <div className={`flex items-center gap-1 mt-0.5 opacity-60 text-[10px] ${isMine ? 'justify-start' : 'justify-end'}`}>
+                      <div key={m.id} className={`flex ${isMine ? 'justify-start' : 'justify-end'} mb-1`}>
+                        <div className={`relative max-w-[80%] rounded-lg px-2.5 py-1.5 text-xs shadow-sm ${
+                          isMine
+                            ? 'bg-[hsl(142,60%,85%)] text-[hsl(142,70%,15%)] rounded-tl-none'
+                            : 'bg-card text-card-foreground rounded-tr-none border border-border'
+                        }`}>
+                          <p className="leading-relaxed">{m.message}</p>
+                          <div className={`flex items-center gap-1 mt-0.5 text-[10px] opacity-50 ${isMine ? 'justify-end' : 'justify-start'}`}>
                             <span>{new Date(m.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>
-                            {isMine && (m.is_read ? <CheckCheck className="h-2.5 w-2.5" /> : <Check className="h-2.5 w-2.5" />)}
+                            {isMine && (m.is_read
+                              ? <CheckCheck className="h-3 w-3 text-[hsl(217,91%,60%)]" />
+                              : <Check className="h-3 w-3" />
+                            )}
                           </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-                {/* Input */}
-                <div className="p-2 border-t border-border shrink-0 flex gap-2">
-                  <Input value={newMsg} onChange={e => setNewMsg(e.target.value)} placeholder="اكتب رسالة..." className="bg-secondary text-xs h-8"
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } }} />
-                  <Button onClick={sendMsg} disabled={sending || !newMsg.trim()} size="icon" className="h-8 w-8 shrink-0">
-                    <Send className="h-3.5 w-3.5" />
+                {/* WhatsApp-style input */}
+                <div className="p-2 bg-muted/30 border-t border-border shrink-0 flex gap-2 items-center">
+                  <Input
+                    value={newMsg}
+                    onChange={e => setNewMsg(e.target.value)}
+                    placeholder="اكتب رسالة..."
+                    className="bg-card text-xs h-9 rounded-full border-border"
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } }}
+                  />
+                  <Button
+                    onClick={sendMsg}
+                    disabled={sending || !newMsg.trim()}
+                    size="icon"
+                    className="h-9 w-9 shrink-0 rounded-full bg-[hsl(142,70%,28%)] hover:bg-[hsl(142,70%,22%)]"
+                  >
+                    <Send className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
