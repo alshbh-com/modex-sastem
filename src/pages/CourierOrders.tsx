@@ -60,8 +60,61 @@ export default function CourierOrders() {
 
   useEffect(() => {
     load();
+    loadChatContacts();
     supabase.from('order_statuses').select('*').order('sort_order').then(({ data }) => setStatuses(data || []));
   }, []);
+
+  // Chat realtime
+  useEffect(() => {
+    if (!chatTarget) return;
+    loadChatMsgs(chatTarget);
+    markChatRead(chatTarget);
+    const ch = supabase.channel('courier-chat-' + chatTarget)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user?.id}` }, (p) => {
+        const msg = p.new as any;
+        if (msg.sender_id === chatTarget) { setChatMessages(prev => [...prev, msg]); markChatRead(chatTarget); }
+        loadChatContacts();
+      }).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [chatTarget]);
+
+  useEffect(() => {
+    if (chatScrollRef.current) chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+  }, [chatMessages]);
+
+  const loadChatContacts = async () => {
+    const { data: roles } = await supabase.from('user_roles').select('user_id, role').in('role', ['owner', 'admin']);
+    if (!roles) return;
+    const ids = roles.map(r => r.user_id).filter(id => id !== user?.id);
+    if (ids.length === 0) return;
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', ids);
+    const { data: unread } = await supabase.from('messages' as any).select('sender_id').eq('receiver_id', user?.id || '').eq('is_read', false);
+    const unreadMap: Record<string, number> = {};
+    (unread || []).forEach((m: any) => { unreadMap[m.sender_id] = (unreadMap[m.sender_id] || 0) + 1; });
+    setChatContacts((profiles || []).map(p => ({
+      id: p.id, name: p.full_name || 'الإدارة', unread: unreadMap[p.id] || 0,
+      role: roles.find(r => r.user_id === p.id)?.role === 'owner' ? 'مالك' : 'أدمن',
+    })));
+  };
+
+  const loadChatMsgs = async (cid: string) => {
+    const { data } = await supabase.from('messages' as any).select('*')
+      .or(`and(sender_id.eq.${user?.id},receiver_id.eq.${cid}),and(sender_id.eq.${cid},receiver_id.eq.${user?.id})`)
+      .order('created_at', { ascending: true }).limit(100);
+    setChatMessages(data || []);
+  };
+
+  const markChatRead = async (cid: string) => {
+    await supabase.from('messages' as any).update({ is_read: true }).eq('sender_id', cid).eq('receiver_id', user?.id || '').eq('is_read', false);
+  };
+
+  const sendChatMsg = async () => {
+    if (!chatMsg.trim() || !chatTarget || chatSending) return;
+    setChatSending(true);
+    const { data } = await supabase.from('messages' as any).insert({ sender_id: user?.id, receiver_id: chatTarget, message: chatMsg.trim() }).select().single();
+    if (data) { setChatMessages(prev => [...prev, data]); setChatMsg(''); loadChatContacts(); }
+    setChatSending(false);
+  };
 
   const load = async () => {
     const { data } = await supabase
