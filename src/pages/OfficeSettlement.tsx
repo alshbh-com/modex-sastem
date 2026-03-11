@@ -90,6 +90,7 @@ export default function OfficeSettlement() {
   };
 
   const loadClosingData = async () => {
+    isLoadingRef.current = true;
     // Try to load from DB first
     const { data, error } = await supabase
       .from('office_daily_closings')
@@ -109,6 +110,7 @@ export default function OfficeSettlement() {
       const jsonData = saved.data_json;
       if (jsonData && Array.isArray(jsonData) && jsonData.length > 0) {
         setRows(jsonData);
+        isLoadingRef.current = false;
         return;
       }
     } else {
@@ -135,6 +137,7 @@ export default function OfficeSettlement() {
     } else {
       setRows([newRow()]);
     }
+    isLoadingRef.current = false;
   };
 
   const saveToDb = async () => {
