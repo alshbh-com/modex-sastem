@@ -136,14 +136,16 @@ export default function OfficeSettlement() {
       };
 
       if (closingId) {
-        await supabase.from('office_daily_closings' as any).update(payload).eq('id', closingId);
+        const { error } = await supabase.from('office_daily_closings').update(payload as any).eq('id', closingId);
+        if (error) { toast.error('فشل التحديث: ' + error.message); setSaving(false); return; }
       } else {
-        const { data } = await supabase.from('office_daily_closings' as any).insert(payload).select().single();
+        const { data, error } = await supabase.from('office_daily_closings').insert(payload as any).select().single();
+        if (error) { toast.error('فشل الحفظ: ' + error.message); setSaving(false); return; }
         if (data) setClosingId((data as any).id);
       }
       toast.success('تم حفظ البيانات');
-    } catch {
-      toast.error('فشل الحفظ');
+    } catch (e: any) {
+      toast.error('فشل الحفظ: ' + (e?.message || ''));
     }
     setSaving(false);
   };
