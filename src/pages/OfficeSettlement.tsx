@@ -140,6 +140,29 @@ export default function OfficeSettlement() {
     isLoadingRef.current = false;
   };
 
+  // Silent auto-save (no toast unless error)
+  const saveToDbSilent = async () => {
+    if (!selectedOffice || selectedOffice === 'all') return;
+    try {
+      const payload = {
+        office_id: selectedOffice,
+        closing_date: closingDate,
+        data_json: rows,
+        pickup_rate: parseFloat(pickupRate) || 0,
+        is_locked: isLocked,
+        is_closed: isClosed,
+        prevent_add: preventAdd,
+        updated_at: new Date().toISOString(),
+      };
+      if (closingId) {
+        await supabase.from('office_daily_closings').update(payload as any).eq('id', closingId);
+      } else {
+        const { data } = await supabase.from('office_daily_closings').insert(payload as any).select().single();
+        if (data) setClosingId((data as any).id);
+      }
+    } catch { /* silent */ }
+  };
+
   const saveToDb = async () => {
     if (!selectedOffice || selectedOffice === 'all') {
       toast.error('اختر مكتب أولاً');
