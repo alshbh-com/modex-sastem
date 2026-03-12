@@ -151,6 +151,41 @@ export type Database = {
         }
         Relationships: []
       }
+      company_payments: {
+        Row: {
+          amount: number
+          company_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          paid_by: string | null
+        }
+        Insert: {
+          amount?: number
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          paid_by?: string | null
+        }
+        Update: {
+          amount?: number
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          paid_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_payments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courier_bonuses: {
         Row: {
           amount: number
