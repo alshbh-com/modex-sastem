@@ -47,6 +47,34 @@ Deno.serve(async (req) => {
       return (data && data.length > 0) || false
     }
 
+    // ---- CREATE FIRST OWNER (no auth required, only if no owners exist) ----
+    if (action === 'create-first-owner') {
+      const { data: existingOwners } = await supabaseAdmin.from('user_roles').select('id').eq('role', 'owner').limit(1)
+      if (existingOwners && existingOwners.length > 0) {
+        return new Response(JSON.stringify({ error: 'يوجد مالك بالفعل' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      const ownerPassword = password
+      const email = codeToEmail(ownerPassword)
+      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email, password: ownerPassword, email_confirm: true,
+        user_metadata: { full_name: 'المالك' }
+      })
+      if (createError) {
+        return new Response(JSON.stringify({ error: createError.message }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+      await supabaseAdmin.from('profiles').update({ full_name: 'المالك', login_code: ownerPassword }).eq('id', newUser.user.id)
+      await supabaseAdmin.from('user_roles').insert({ user_id: newUser.user.id, role: 'owner' })
+
+      return new Response(JSON.stringify({ success: true, user_id: newUser.user.id }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     // ---- CREATE USER ----
     if (action === 'create-user') {
       const caller = await verifyCaller()
