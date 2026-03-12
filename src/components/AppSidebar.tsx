@@ -77,10 +77,10 @@ export function AppSidebar() {
     <Sidebar side="right" collapsible="icon">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-            F
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl gradient-primary shadow-glow font-bold text-sm text-primary-foreground">
+            M
           </div>
-          <span className="text-lg font-bold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+          <span className="text-lg font-extrabold text-sidebar-foreground group-data-[collapsible=icon]:hidden tracking-wide">
             MODEX
           </span>
         </div>

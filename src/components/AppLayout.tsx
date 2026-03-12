@@ -27,7 +27,7 @@ export default function AppLayout() {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <SidebarInset className="flex-1 min-w-0">
-          <header className="flex h-12 items-center border-b border-border px-4">
+          <header className="flex h-12 items-center border-b border-border/50 px-4 glass-effect">
             <SidebarTrigger />
           </header>
           <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-x-hidden">
