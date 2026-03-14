@@ -115,6 +115,7 @@ const App = () => (
               <Route path="/status-management" element={<StatusManagement />} />
               <Route path="/order-notes" element={<OrderNotes />} />
               <Route path="/data-export" element={<DataExport />} />
+              <Route path="/excel-import" element={<ExcelImport />} />
               <Route path="/office-report" element={<OfficeReport />} />
               <Route path="/trash" element={<TrashBin />} />
               <Route path="/system-guide" element={<SystemGuide />} />
