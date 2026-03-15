@@ -65,6 +65,7 @@ export default function ExcelImport() {
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
   const [step, setStep] = useState<'upload' | 'map' | 'preview'>('upload');
+  const [globalShipping, setGlobalShipping] = useState<string>('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: offices = [] } = useQuery({
