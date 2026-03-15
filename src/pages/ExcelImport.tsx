@@ -279,6 +279,17 @@ export default function ExcelImport() {
             </div>
 
             <div className="space-y-1">
+              <label className="text-sm text-muted-foreground">سعر الشحن (لكل الأوردرات)</label>
+              <input
+                type="number"
+                value={globalShipping}
+                onChange={(e) => setGlobalShipping(e.target.value)}
+                placeholder="مثلاً 70"
+                className="flex h-10 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+
+            <div className="space-y-1">
               <label className="text-sm text-muted-foreground">ملف Excel</label>
               <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} className="hidden" />
               <Button
